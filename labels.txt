@@ -1,0 +1,1 @@
+master_direction, circular, notification, regulation_section, act, scheme, bank, nbfc, regulator_body, identifier, acronym, amount, percentage, date, time_period, entity_role, organization_unit, entity_type, party, person, position, title

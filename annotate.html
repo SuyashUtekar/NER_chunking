@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Token-based NER Annotator — Persistent</title>
+<style>
+  :root{font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; --muted:#6b7280;}
+  body{margin:0;background:#071022;color:#e6eef8;padding:18px;display:flex;gap:18px;min-height:100vh}
+  .panel{background:#0b1220;border-radius:10px;padding:14px;box-shadow:0 6px 18px rgba(2,6,23,0.6);width:360px;max-height:calc(100vh - 36px);overflow:auto}
+  .main{flex:1;min-width:0;max-height:calc(100vh - 36px);overflow:auto;padding:14px;border-radius:10px;background:linear-gradient(180deg,#071022,#06121a)}
+  h2{margin:6px 0 12px 0;color:#fff;font-size:16px}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  textarea,input[type="text"]{width:100%;font-size:14px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.02);color:inherit}
+  .row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  button.btn{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);padding:8px 10px;border-radius:8px;color:inherit;cursor:pointer}
+  .doc-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .doc-item{display:flex;justify-content:space-between;align-items:center;padding:8px;background:rgba(255,255,255,0.02);border-radius:8px}
+  .tokens{display:flex;flex-wrap:wrap;gap:6px;padding:14px;border-radius:10px;background:rgba(255,255,255,0.01);font-size:14px;line-height:1.6}
+  .token{
+    position:relative;
+    padding:8px 10px;border-radius:8px;background:transparent;border:1px dashed rgba(255,255,255,0.03);cursor:pointer;user-select:none;
+    min-width:30px;text-align:center;
+  }
+  .token .idx { display:block; position:absolute; top:-10px; left:50%; transform:translateX(-50%); font-size:11px; color:var(--muted); background:transparent; padding:1px 4px; border-radius:4px; }
+  .token.sel { outline:3px solid rgba(99,102,241,0.18); background: rgba(99,102,241,0.12); }
+  .token.ann { outline:3px solid rgba(34,197,94,0.16); }
+  .label-btn{border:none;padding:6px 8px;border-radius:8px;color:#071022;cursor:pointer;font-weight:700}
+  .palette{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px 0}
+  .annotations-list{background:rgba(0,0,0,0.12);padding:10px;border-radius:8px;margin-top:8px}
+  .ann-row{display:flex;justify-content:space-between;align-items:center;padding:6px 4px}
+  .small{font-size:13px;color:var(--muted)}
+  .kbd{background:rgba(255,255,255,0.03);padding:4px 8px;border-radius:6px;font-weight:700}
+  pre.preview{white-space:pre-wrap;padding:10px;background:#071122;border-radius:8px;color:#e6eef8}
+  .toggle {display:inline-flex;align-items:center;gap:8px}
+  .note{font-size:12px;color:var(--muted);margin-top:8px}
+  .legendToken { display:inline-block;padding:6px 8px;border-radius:6px;margin-right:8px;font-weight:700;color:#071022 }
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <h2>Token-based NER Annotator — Persistent</h2>
+
+  <label>Documents (one per line)</label>
+  <textarea id="docsInput" rows="6" placeholder="Each line becomes one document"></textarea>
+  <div class="row">
+    <button id="loadDocs" class="btn">Load</button>
+    <button id="clearDocs" class="btn">Clear</button>
+    <button id="resetAll" class="btn" title="Clear saved state too">Reset All</button>
+  </div>
+
+  <label>Labels (comma separated)</label>
+  <input id="labelsInput" placeholder="title,author,ORG,PERSON" />
+  <div class="row">
+    <button id="setLabels" class="btn">Create Labels</button>
+    <button id="clearLabels" class="btn">Reset</button>
+  </div>
+
+  <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+    <label class="toggle"><input type="checkbox" id="showIndices" checked /> <span class="small">Show token indices</span></label>
+    <div class="note">Hotkeys: press number keys 1.. to apply labels. Press <span class="kbd">Esc</span> to clear selection.</div>
+  </div>
+
+  <div id="labelsArea"></div>
+
+  <h2 style="margin-top:12px">Documents</h2>
+  <div id="docsList" class="doc-list"><div class="small">No documents</div></div>
+
+  <div style="margin-top:8px" class="small">Selection: click a token to start, click another to end → then click label (or press its number). Spans use <strong>0-based, inclusive</strong> token indices.</div>
+</div>
+
+<div class="main">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <div id="currentTitle" style="font-weight:700">No document selected</div>
+      <div id="docCount" class="small">0 documents</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button id="prevDoc" class="btn">◀ Prev</button>
+      <button id="nextDoc" class="btn">Next ▶</button>
+      <button id="exportJsonl" class="btn">Export JSONL</button>
+      <button id="downloadJsonl" class="btn">Download .jsonl</button>
+    </div>
+  </div>
+
+  <label style="margin-top:12px">Tokenized document</label>
+  <div id="tokensContainer" class="tokens" tabindex="0">No document</div>
+  <div id="legend" style="margin-top:10px"></div>
+
+  <h2 style="margin-top:12px">Annotations</h2>
+  <div id="annotations" class="annotations-list"><div class="small">No annotations</div></div>
+
+  <h2 style="margin-top:12px">Export preview</h2>
+  <pre id="preview" class="preview">Click Export JSONL to preview exported data</pre>
+</div>
+
+<script>
+(() => {
+  // LocalStorage key
+  const STORAGE_KEY = 'annotator_persist_v1';
+
+  // state
+  let docs = []; // each {text, tokens: [], annotations: [{start,end,label}]}
+  let labels = []; // [{name,color}]
+  let currentIndex = -1;
+  let selStart = null;
+  let selEnd = null;
+
+  // elements
+  const docsInput = document.getElementById('docsInput');
+  const loadDocs = document.getElementById('loadDocs');
+  const clearDocs = document.getElementById('clearDocs');
+  const resetAll = document.getElementById('resetAll');
+  const labelsInput = document.getElementById('labelsInput');
+  const setLabels = document.getElementById('setLabels');
+  const clearLabels = document.getElementById('clearLabels');
+  const docsList = document.getElementById('docsList');
+  const tokensContainer = document.getElementById('tokensContainer');
+  const labelsArea = document.getElementById('labelsArea');
+  const annotationsDiv = document.getElementById('annotations');
+  const currentTitle = document.getElementById('currentTitle');
+  const docCount = document.getElementById('docCount');
+  const prevDoc = document.getElementById('prevDoc');
+  const nextDoc = document.getElementById('nextDoc');
+  const exportJsonl = document.getElementById('exportJsonl');
+  const downloadJsonl = document.getElementById('downloadJsonl');
+  const preview = document.getElementById('preview');
+  const legend = document.getElementById('legend');
+  const showIndicesCheckbox = document.getElementById('showIndices');
+
+  const COLORS = ["#FDE68A","#FDBA74","#FB7185","#C7B2FF","#86EFAC","#60A5FA","#FCA5A5","#A7F3D0","#FCE7F3","#C4B5FD"];
+
+  // English-only Tokenizer:
+  const TOKEN_RE = /[A-Za-z]+|[0-9]+|['’]|[^\sA-Za-z0-9'’]/g;
+  function tokenize(text){
+    const toks = [];
+    let m;
+    while((m = TOKEN_RE.exec(text)) !== null){
+      toks.push(m[0]);
+    }
+    return toks;
+  }
+
+  // ---------- Persistence ----------
+  function saveState(){
+    try {
+      const payload = {
+        docs,
+        labels,
+        currentIndex,
+        selStart,
+        selEnd,
+        showIndices: showIndicesCheckbox.checked,
+        savedAt: (new Date()).toISOString()
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      // small visual cue: update preview automatically
+      preview.textContent = buildJsonl();
+    } catch(e){
+      console.warn('Failed to save state:', e);
+    }
+  }
+
+  function loadState(){
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return false;
+      const p = JSON.parse(raw);
+      // basic validation
+      if(!p.docs || !Array.isArray(p.docs)) return false;
+      docs = p.docs;
+      labels = p.labels || [];
+      currentIndex = (typeof p.currentIndex === 'number') ? p.currentIndex : (docs.length ? 0 : -1);
+      selStart = null; selEnd = null; // don't restore ephemeral selection
+      // apply showIndices if present
+      if(typeof p.showIndices === 'boolean') showIndicesCheckbox.checked = p.showIndices;
+      renderLabelsArea();
+      renderLegend();
+      renderDocsList();
+      renderCurrent();
+      return true;
+    } catch(e){
+      console.warn('Failed to load saved state:', e);
+      return false;
+    }
+  }
+
+  function clearSavedState(){
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
+  // ---------- UI rendering ----------
+  function makeDocsFromInput(){
+    const raw = docsInput.value.split(/\r?\n/).map(s=>s).filter(s=>s.length>0);
+    docs = raw.map(t => ({ text: t, tokens: tokenize(t), annotations: [] }));
+    currentIndex = docs.length ? 0 : -1;
+    clearSelection();
+    renderDocsList();
+    renderCurrent();
+    saveState();
+  }
+
+  function renderDocsList(){
+    docsList.innerHTML = "";
+    if(!docs.length){
+      docsList.innerHTML = '<div class="small">No documents</div>';
+      docCount.textContent = "0 documents";
+      currentTitle.textContent = "No document selected";
+      return;
+    }
+    docCount.textContent = docs.length + " document(s)";
+    docs.forEach((d,i)=>{
+      const el = document.createElement('div');
+      el.className = 'doc-item';
+      el.innerHTML = `<div style="flex:1"><strong>#${i+1}</strong> — <span style="color:var(--muted);font-size:13px">${shorten(d.text,80)}</span></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn" data-idx="${i}">Open</button>
+          <button class="btn" data-del="${i}">Del</button>
+        </div>`;
+      docsList.appendChild(el);
+    });
+    docsList.querySelectorAll('[data-idx]').forEach(b=>{
+      b.addEventListener('click', e=>{
+        currentIndex = parseInt(b.getAttribute('data-idx'),10);
+        clearSelection();
+        renderCurrent();
+        saveState();
+      });
+    });
+    docsList.querySelectorAll('[data-del]').forEach(b=>{
+      b.addEventListener('click', e=>{
+        const idx = parseInt(b.getAttribute('data-del'),10);
+        if(!confirm('Delete document #' + (idx+1) + '?')) return;
+        docs.splice(idx,1);
+        if(currentIndex >= docs.length) currentIndex = docs.length-1;
+        clearSelection();
+        renderDocsList();
+        renderCurrent();
+        saveState();
+      });
+    });
+  }
+
+  function shorten(s,n){ return s.length>n ? s.slice(0,n-1)+"…" : s; }
+
+  function setLabelPaletteFromInput(){
+    const raw = labelsInput.value.trim();
+    if(!raw) return alert('Enter label names, comma separated (e.g. title,author)');
+    labels = raw.split(',').map(s=>s.trim()).filter(Boolean).map((name,i)=>({name, color: COLORS[i % COLORS.length]}));
+    renderLabelsArea();
+    renderLegend();
+    renderCurrent();
+    saveState();
+  }
+
+  function renderLabelsArea(){
+    labelsArea.innerHTML = '';
+    if(!labels.length) { labelsArea.innerHTML = '<div class="small">No labels created</div>'; return }
+    const p = document.createElement('div');
+    p.className = 'palette';
+    labels.forEach((lab,i)=>{
+      const btn = document.createElement('button');
+      btn.className = 'label-btn';
+      btn.style.background = lab.color;
+      btn.textContent = (i+1) + ' · ' + lab.name;
+      btn.title = `Label ${lab.name} (press ${i+1})`;
+      btn.addEventListener('click', ()=> applyLabelToSelection(lab.name));
+      p.appendChild(btn);
+    });
+    labelsArea.appendChild(p);
+  }
+
+  function renderLegend(){
+    legend.innerHTML = '';
+    if(!labels.length) return;
+    labels.forEach(l=>{
+      const sp = document.createElement('span');
+      sp.className = 'legendToken';
+      sp.style.background = l.color;
+      sp.style.color = '#071022';
+      sp.textContent = l.name;
+      legend.appendChild(sp);
+    });
+  }
+
+  function renderCurrent(){
+    annotationsDiv.innerHTML = '';
+    tokensContainer.innerHTML = '';
+    if(currentIndex < 0 || currentIndex >= docs.length){
+      currentTitle.textContent = "No document selected";
+      tokensContainer.textContent = "No document";
+      annotationsDiv.innerHTML = '<div class="small">No annotations</div>';
+      preview.textContent = 'Click Export JSONL to preview exported data';
+      return;
+    }
+    const doc = docs[currentIndex];
+    currentTitle.textContent = `Document #${currentIndex+1}`;
+    // render tokens
+    tokensContainer.innerHTML = '';
+    const showIdx = showIndicesCheckbox.checked;
+    doc.tokens.forEach((t,i)=>{
+      const el = document.createElement('div');
+      el.className = 'token';
+      el.setAttribute('data-idx', i);
+
+      // index badge
+      if(showIdx){
+        const idxSpan = document.createElement('span');
+        idxSpan.className = 'idx';
+        idxSpan.textContent = i;
+        el.appendChild(idxSpan);
+      }
+
+      const textSpan = document.createElement('div');
+      textSpan.style.pointerEvents = 'none';
+      textSpan.textContent = t;
+      el.appendChild(textSpan);
+
+      // if token is inside any annotation, add colored bg
+      const ann = doc.annotations.find(a => i >= a.start && i <= a.end);
+      if(ann){
+        const lab = labels.find(l => l.name === ann.label) || {color:'#ddd'};
+        el.style.background = lab.color;
+        el.style.color = '#071022';
+        el.classList.add('ann');
+      } else {
+        el.style.background = 'transparent';
+        el.style.color = '';
+      }
+
+      // selection highlight
+      if(selStart !== null && selEnd !== null){
+        const [s,e] = selStart <= selEnd ? [selStart, selEnd] : [selEnd, selStart];
+        if(i >= s && i <= e) el.classList.add('sel');
+      } else if(selStart !== null && selEnd === null){
+        if(i === selStart) el.classList.add('sel');
+      }
+
+      el.addEventListener('click', (ev)=>{
+        tokenClicked(i);
+      });
+      tokensContainer.appendChild(el);
+    });
+    renderAnnotationsList();
+  }
+
+  function tokenClicked(idx){
+    if(selStart === null){
+      selStart = idx;
+      selEnd = null;
+    } else if(selStart !== null && selEnd === null){
+      selEnd = idx;
+    } else {
+      selStart = idx;
+      selEnd = null;
+    }
+    renderCurrent();
+  }
+
+  function clearSelection(){
+    selStart = null; selEnd = null;
+  }
+
+  function applyLabelToSelection(labelName){
+    if(currentIndex < 0 || currentIndex >= docs.length) { alert('Open a document first'); return }
+    if(selStart === null){ alert('Select tokens: click a start token, then click an end token, then apply label.'); return }
+    const doc = docs[currentIndex];
+    const start = Math.min(selStart, (selEnd === null ? selStart : selEnd));
+    const end = Math.max(selStart, (selEnd === null ? selStart : selEnd));
+    // check overlap: no existing annotation should overlap (simple policy)
+    for(const a of doc.annotations){
+      if(!(end < a.start || start > a.end)){
+        return alert('Overlaps with existing annotation. Delete conflicting annotation first.');
+      }
+    }
+    doc.annotations.push({start, end, label: labelName});
+    // sort
+    doc.annotations.sort((x,y)=>x.start - y.start);
+    clearSelection();
+    renderCurrent();
+    saveState();
+  }
+
+  function renderAnnotationsList(){
+    annotationsDiv.innerHTML = '';
+    if(currentIndex < 0 || currentIndex >= docs.length){
+      annotationsDiv.innerHTML = '<div class="small">No annotations</div>';
+      return;
+    }
+    const doc = docs[currentIndex];
+    if(!doc.annotations.length){ annotationsDiv.innerHTML = '<div class="small">No annotations</div>'; return }
+    doc.annotations.forEach((a,idx)=>{
+      const row = document.createElement('div');
+      row.className = 'ann-row';
+      const sliceText = doc.tokens.slice(a.start, a.end + 1).join(' ');
+      row.innerHTML = `<div><strong>${a.label}</strong> — <span class="small">[${a.start},${a.end}]</span> — <span class="small">${escapeHtml(sliceText)}</span></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" data-edit="${idx}">Edit</button>
+          <button class="btn" data-del="${idx}">Delete</button>
+        </div>`;
+      annotationsDiv.appendChild(row);
+    });
+    annotationsDiv.querySelectorAll('[data-del]').forEach(b=>{
+      b.addEventListener('click', e=>{
+        const idx = parseInt(b.getAttribute('data-del'),10);
+        docs[currentIndex].annotations.splice(idx,1);
+        renderCurrent();
+        saveState();
+      });
+    });
+    annotationsDiv.querySelectorAll('[data-edit]').forEach(b=>{
+      b.addEventListener('click', e=>{
+        const idx = parseInt(b.getAttribute('data-edit'),10);
+        const a = docs[currentIndex].annotations[idx];
+        const newLabel = prompt('Change label for selected token span', a.label);
+        if(newLabel) { a.label = newLabel; renderCurrent(); saveState(); }
+      });
+    });
+  }
+
+  function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function buildJsonl(){
+    const lines = docs.map(d => {
+      const ner = (d.annotations || []).map(a => [a.start, a.end, a.label]);
+      return JSON.stringify({ tokenized_text: d.tokens, ner: ner });
+    });
+    return lines.join("\\n");
+  }
+
+  function triggerDownload(filename, content){
+    const blob = new Blob([content], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 5000);
+  }
+
+  // ---------- Events ----------
+  loadDocs.addEventListener('click', ()=>{
+    makeDocsFromInput();
+    saveState();
+  });
+  clearDocs.addEventListener('click', ()=>{ docsInput.value=''; docs=[]; currentIndex=-1; clearSelection(); renderDocsList(); renderCurrent(); saveState(); });
+  resetAll.addEventListener('click', ()=>{
+    if(!confirm('Reset everything and clear saved data?')) return;
+    clearSavedState();
+    docsInput.value = '';
+    labelsInput.value = '';
+    docs = [];
+    labels = [];
+    currentIndex = -1;
+    clearSelection();
+    showIndicesCheckbox.checked = true;
+    renderLabelsArea(); renderLegend(); renderDocsList(); renderCurrent();
+  });
+
+  setLabels.addEventListener('click', ()=>{ setLabelPaletteFromInput(); });
+  clearLabels.addEventListener('click', ()=>{ labelsInput.value=''; labels=[]; renderLabelsArea(); renderLegend(); renderCurrent(); saveState(); });
+
+  prevDoc.addEventListener('click', ()=>{ if(docs.length){ currentIndex = Math.max(0, currentIndex-1); clearSelection(); renderCurrent(); saveState(); }});
+  nextDoc.addEventListener('click', ()=>{ if(docs.length){ currentIndex = Math.min(docs.length-1, currentIndex+1); clearSelection(); renderCurrent(); saveState(); }});
+
+  exportJsonl.addEventListener('click', ()=>{
+    const previewText = buildJsonl();
+    preview.textContent = previewText;
+    // also open in new tab for easy copy
+    const w = window.open('', '_blank');
+    w.document.write('<pre style="white-space:pre-wrap;font-family:monospace;padding:10px;background:#071122;color:#e6eef8;">'+escapeHtml(previewText)+'</pre>');
+  });
+
+  downloadJsonl.addEventListener('click', ()=>{ const content = buildJsonl(); triggerDownload('annotations.jsonl', content); });
+
+  showIndicesCheckbox.addEventListener('change', ()=>{ renderCurrent(); saveState(); });
+
+  // number key shortcuts to apply labels
+  document.addEventListener('keydown', (e)=>{
+    if(e.key >= '1' && e.key <= String(Math.min(9, labels.length))){
+      const idx = parseInt(e.key,10)-1;
+      const lab = labels[idx];
+      if(lab) applyLabelToSelection(lab.name);
+    }
+    if(e.key === 'Escape'){
+      clearSelection();
+      renderCurrent();
+    }
+  });
+
+  // Warn before unload (helps avoid accidental refresh losing unsaved work)
+  window.addEventListener('beforeunload', (e) => {
+    // since we auto-save, this is mainly a safety net if browser tries to close
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
+  // ---------- Initialization ----------
+  // Try loading saved state; if none, initialize default example
+  const loaded = loadState();
+  if(!loaded){
+    const example = [
+      "Looking for La conquesta du chasteau d' amours conquestee par l' umilite du beau doulx, the from Anonymous."
+    ];
+    docsInput.value = example.join("\\n");
+    labelsInput.value = "title,author";
+    makeDocsFromInput();
+    setLabelPaletteFromInput();
+    saveState();
+  }
+
+})();
+</script>
+</body>
+</html>
