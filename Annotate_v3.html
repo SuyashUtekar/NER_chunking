@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Token NER Annotator — Nested Spans Allowed</title>
+<style>
+  :root{font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;--muted:#6b7280}
+  body{margin:0;background:#071022;color:#e6eef8;padding:18px;display:flex;gap:18px;min-height:100vh}
+  .panel{background:#0b1220;border-radius:10px;padding:14px;box-shadow:0 6px 18px rgba(2,6,23,0.6);width:360px;max-height:calc(100vh - 36px);overflow:auto}
+  .main{flex:1;min-width:0;max-height:calc(100vh - 36px);overflow:auto;padding:14px;border-radius:10px;background:linear-gradient(180deg,#071022,#06121a)}
+  h2{margin:6px 0 12px 0;color:#fff;font-size:16px}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  textarea,input[type="text"]{width:100%;font-size:14px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.02);color:inherit}
+  .row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  button.btn{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);padding:8px 10px;border-radius:8px;color:inherit;cursor:pointer}
+  .doc-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .doc-item{display:flex;justify-content:space-between;align-items:center;padding:8px;background:rgba(255,255,255,0.02);border-radius:8px}
+  .tokens{display:flex;flex-wrap:wrap;gap:6px;padding:14px;border-radius:10px;background:rgba(255,255,255,0.01);font-size:14px;line-height:1.6}
+  .token{position:relative;padding:8px 10px;border-radius:8px;background:transparent;border:1px dashed rgba(255,255,255,0.03);cursor:pointer;user-select:none;min-width:30px;text-align:center}
+  .token .idx{display:block;position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--muted);background:transparent;padding:1px 4px;border-radius:4px}
+  .token.sel{outline:3px solid rgba(99,102,241,0.18);background:rgba(99,102,241,0.12)}
+  .token.ann{outline:3px solid rgba(34,197,94,0.12)}
+  .token .layers{position:absolute;right:2px;bottom:2px;font-size:11px;padding:2px 6px;border-radius:8px;background:rgba(0,0,0,0.25);color:var(--muted)}
+  .label-btn{border:none;padding:6px 8px;border-radius:8px;color:#071022;cursor:pointer;font-weight:700}
+  .palette{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px 0}
+  .annotations-list{background:rgba(0,0,0,0.12);padding:10px;border-radius:8px;margin-top:8px;max-height:220px;overflow:auto}
+  .ann-row{display:flex;justify-content:space-between;align-items:center;padding:6px 4px}
+  .ann-left{display:flex;flex-direction:column}
+  .ann-span{font-size:13px}
+  .ann-meta{font-size:12px;color:var(--muted)}
+  .small{font-size:13px;color:var(--muted)}
+  .kbd{background:rgba(255,255,255,0.03);padding:4px 8px;border-radius:6px;font-weight:700}
+  pre.preview{white-space:pre-wrap;padding:10px;background:#071122;border-radius:8px;color:#e6eef8}
+  .legendToken{display:inline-block;padding:6px 8px;border-radius:6px;margin-right:8px;font-weight:700;color:#071022}
+  .nested-indent{margin-left:16px}
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <h2>Token NER Annotator — Nested Spans Allowed</h2>
+  <label>Documents (one per line)</label>
+  <textarea id="docsInput" rows="6" placeholder="Each line becomes one document"></textarea>
+  <div class="row">
+    <button id="loadDocs" class="btn">Load</button>
+    <button id="clearDocs" class="btn">Clear</button>
+    <button id="resetAll" class="btn" title="Clear saved state too">Reset All</button>
+  </div>
+
+  <label>Labels (comma separated)</label>
+  <input id="labelsInput" placeholder="title,author,ORG,PERSON" />
+  <div class="row">
+    <button id="setLabels" class="btn">Create Labels</button>
+    <button id="clearLabels" class="btn">Reset</button>
+  </div>
+
+  <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+    <label style="display:inline-flex;align-items:center;gap:8px"><input type="checkbox" id="showIndices" checked /> <span class="small">Show token indices</span></label>
+    <div style="margin-left:8px" class="note small">Hotkeys: press number keys 1.. to apply labels. Press <span class="kbd">Esc</span> to clear selection.</div>
+  </div>
+
+  <div id="labelsArea"></div>
+
+  <h2 style="margin-top:12px">Documents</h2>
+  <div id="docsList" class="doc-list"><div class="small">No documents</div></div>
+  <div style="margin-top:8px" class="small">Selection: click a token to start, click another to end → then click label (or press its number). Allowed: nested spans (full containment). Disallowed: partial/crossing overlaps.</div>
+</div>
+
+<div class="main">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <div id="currentTitle" style="font-weight:700">No document selected</div>
+      <div id="docCount" class="small">0 documents</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button id="prevDoc" class="btn">◀ Prev</button>
+      <button id="nextDoc" class="btn">Next ▶</button>
+      <button id="exportJsonl" class="btn">Export JSONL</button>
+      <button id="downloadJsonl" class="btn">Download .jsonl</button>
+    </div>
+  </div>
+
+  <label style="margin-top:12px">Tokenized document</label>
+  <div id="tokensContainer" class="tokens" tabindex="0">No document</div>
+  <div id="legend" style="margin-top:10px"></div>
+
+  <h2 style="margin-top:12px">Annotations (shows nesting)</h2>
+  <div id="annotations" class="annotations-list"><div class="small">No annotations</div></div>
+
+  <h2 style="margin-top:12px">Export preview</h2>
+  <pre id="preview" class="preview">Click Export JSONL to preview exported data</pre>
+</div>
+
+<script>
+(() => {
+  const STORAGE_KEY = 'annotator_nested_v1';
+  const COLORS = ["#FDE68A","#FDBA74","#FB7185","#C7B2FF","#86EFAC","#60A5FA","#FCA5A5","#A7F3D0","#FCE7F3","#C4B5FD"];
+  const TOKEN_RE = /[A-Za-z]+|[0-9]+|['’]|[^\sA-Za-z0-9'’]/g; // English-only tokenizer
+
+  // state
+  let docs = []; // {text, tokens:[], annotations: [{start,end,label,id}]}
+  let labels = []; // {name,color}
+  let currentIndex = -1;
+  let selStart = null, selEnd = null;
+
+  // elements
+  const docsInput = document.getElementById('docsInput');
+  const loadDocs = document.getElementById('loadDocs');
+  const clearDocs = document.getElementById('clearDocs');
+  const resetAll = document.getElementById('resetAll');
+  const labelsInput = document.getElementById('labelsInput');
+  const setLabels = document.getElementById('setLabels');
+  const clearLabels = document.getElementById('clearLabels');
+  const docsList = document.getElementById('docsList');
+  const tokensContainer = document.getElementById('tokensContainer');
+  const labelsArea = document.getElementById('labelsArea');
+  const annotationsDiv = document.getElementById('annotations');
+  const currentTitle = document.getElementById('currentTitle');
+  const docCount = document.getElementById('docCount');
+  const prevDoc = document.getElementById('prevDoc');
+  const nextDoc = document.getElementById('nextDoc');
+  const exportJsonl = document.getElementById('exportJsonl');
+  const downloadJsonl = document.getElementById('downloadJsonl');
+  const preview = document.getElementById('preview');
+  const legend = document.getElementById('legend');
+  const showIndicesCheckbox = document.getElementById('showIndices');
+
+  // --- tokenizer
+  function tokenize(text){
+    const toks = [];
+    let m;
+    while((m = TOKEN_RE.exec(text)) !== null) toks.push(m[0]);
+    return toks;
+  }
+
+  // --- persistence
+  function saveState(){
+    try {
+      const payload = { docs, labels, currentIndex, savedAt: new Date().toISOString(), showIndices: showIndicesCheckbox.checked };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      preview.textContent = buildJsonl();
+    } catch(e){ console.warn('save failed', e) }
+  }
+  function loadState(){
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return false;
+      const p = JSON.parse(raw);
+      if(!Array.isArray(p.docs)) return false;
+      docs = p.docs;
+      labels = p.labels || [];
+      currentIndex = (typeof p.currentIndex === 'number') ? p.currentIndex : (docs.length ? 0 : -1);
+      showIndicesCheckbox.checked = !!p.showIndices;
+      renderLabelsArea(); renderLegend(); renderDocsList(); renderCurrent();
+      return true;
+    } catch(e){ console.warn('load failed', e); return false; }
+  }
+  function clearSavedState(){ localStorage.removeItem(STORAGE_KEY); }
+
+  // --- utilities
+  function uid(){ return 'a' + Math.random().toString(36).slice(2,9); }
+  function shorten(s,n){ return s.length>n ? s.slice(0,n-1)+"…" : s; }
+  function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // --- overlap check: allow full containment, disallow partial/crossing overlaps
+  function isPartialOverlap(newSpan, anns){
+    for(const a of anns){
+      // no overlap
+      if(newSpan.end < a.start || newSpan.start > a.end) continue;
+      // new fully inside existing -> allow
+      if(newSpan.start >= a.start && newSpan.end <= a.end) continue;
+      // existing fully inside new -> allow
+      if(a.start >= newSpan.start && a.end <= newSpan.end) continue;
+      // otherwise partial/crossing overlap -> reject
+      return true;
+    }
+    return false;
+  }
+
+  // --- build parent-child nesting tree for visualization
+  function buildNesting(anns){
+    // anns: array of {start,end,label,id}
+    // For deterministic parent selection, sort by (start asc, end desc) => parents before children
+    const sorted = anns.slice().sort((x,y)=> x.start - y.start || (y.end - x.end));
+    const nodes = sorted.map(a => ({...a, children: []}));
+    for(let i=0;i<nodes.length;i++){
+      let parent = null;
+      for(let j=0;j<i;j++){
+        // j is earlier span; if it fully contains current and it's the smallest containing so far -> candidate
+        if(nodes[j].start <= nodes[i].start && nodes[j].end >= nodes[i].end){
+          // choose the most immediate (tightest) parent: j with max start (or min span)
+          if(!parent || (nodes[j].end - nodes[j].start) < (parent.end - parent.start)) parent = nodes[j];
+        }
+      }
+      if(parent) parent.children.push(nodes[i]);
+    }
+    // roots are nodes with no parent (i.e., not present as children of any)
+    const roots = nodes.filter(n => {
+      // find if it's referenced as a child anywhere
+      return !nodes.some(other => other !== n && other.children.includes(n));
+    });
+    return roots;
+  }
+
+  // --- UI rendering
+  function renderDocsList(){
+    docsList.innerHTML = '';
+    if(!docs.length){ docsList.innerHTML = '<div class="small">No documents</div>'; docCount.textContent='0 documents'; currentTitle.textContent='No document selected'; return; }
+    docCount.textContent = docs.length + ' document(s)';
+    docs.forEach((d,i)=>{
+      const el = document.createElement('div'); el.className='doc-item';
+      el.innerHTML = `<div style="flex:1"><strong>#${i+1}</strong> — <span style="color:var(--muted);font-size:13px">${shorten(d.text,80)}</span></div>
+        <div style="display:flex;gap:6px"><button class="btn" data-idx="${i}">Open</button><button class="btn" data-del="${i}">Del</button></div>`;
+      docsList.appendChild(el);
+    });
+    docsList.querySelectorAll('[data-idx]').forEach(b=>b.addEventListener('click', ()=>{ currentIndex = parseInt(b.getAttribute('data-idx'),10); clearSelection(); renderCurrent(); saveState(); }));
+    docsList.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', ()=>{
+      const idx = parseInt(b.getAttribute('data-del'),10);
+      if(!confirm('Delete document #' + (idx+1) + '?')) return;
+      docs.splice(idx,1); if(currentIndex >= docs.length) currentIndex = docs.length-1;
+      clearSelection(); renderDocsList(); renderCurrent(); saveState();
+    }));
+  }
+
+  function renderLabelsArea(){
+    labelsArea.innerHTML = '';
+    if(!labels.length){ labelsArea.innerHTML = '<div class="small">No labels created</div>'; return; }
+    const p = document.createElement('div'); p.className='palette';
+    labels.forEach((lab,i)=>{
+      const btn = document.createElement('button'); btn.className='label-btn'; btn.style.background = lab.color; btn.textContent = (i+1) + ' · ' + lab.name;
+      btn.title = `Label ${lab.name} (press ${i+1})`; btn.addEventListener('click', ()=> applyLabelToSelection(lab.name));
+      p.appendChild(btn);
+    });
+    labelsArea.appendChild(p);
+  }
+
+  function renderLegend(){
+    legend.innerHTML = ''; if(!labels.length) return;
+    labels.forEach(l=>{ const sp=document.createElement('span'); sp.className='legendToken'; sp.style.background=l.color; sp.style.color='#071022'; sp.textContent=l.name; legend.appendChild(sp); });
+  }
+
+  function renderCurrent(){
+    annotationsDiv.innerHTML=''; tokensContainer.innerHTML='';
+    if(currentIndex < 0 || currentIndex >= docs.length){ currentTitle.textContent='No document selected'; tokensContainer.textContent='No document'; annotationsDiv.innerHTML='<div class="small">No annotations</div>'; preview.textContent='Click Export JSONL to preview exported data'; return; }
+    const doc = docs[currentIndex]; currentTitle.textContent = `Document #${currentIndex+1}`;
+    const showIdx = showIndicesCheckbox.checked;
+    // build quick token -> covering annotations map
+    const coverMap = Array(doc.tokens.length).fill(0).map(()=>[]);
+    (doc.annotations || []).forEach(a=>{
+      for(let t=a.start; t<=a.end; t++){
+        if(t>=0 && t<coverMap.length) coverMap[t].push(a);
+      }
+    });
+
+    doc.tokens.forEach((t,i)=>{
+      const el = document.createElement('div'); el.className='token'; el.setAttribute('data-idx', i);
+      if(showIdx){ const idxSpan=document.createElement('span'); idxSpan.className='idx'; idxSpan.textContent=i; el.appendChild(idxSpan); }
+      const textSpan = document.createElement('div'); textSpan.style.pointerEvents='none'; textSpan.textContent = t; el.appendChild(textSpan);
+
+      // layers count badge
+      const layers = coverMap[i].length;
+      if(layers){
+        const badge = document.createElement('div'); badge.className='layers'; badge.textContent = String(layers);
+        el.appendChild(badge);
+        // color by innermost annotation (choose annotation with smallest span length containing token)
+        let innermost = coverMap[i].slice().sort((a,b)=> (a.end-a.start)-(b.end-b.start))[0];
+        const lab = labels.find(l=>l.name===innermost.label) || {color:'#ddd'};
+        el.style.background = lab.color; el.style.color = '#071022';
+        el.classList.add('ann');
+      } else {
+        el.style.background = 'transparent'; el.style.color = '';
+      }
+
+      // selection highlight
+      if(selStart !== null && selEnd !== null){
+        const [s,e] = selStart <= selEnd ? [selStart, selEnd] : [selEnd, selStart];
+        if(i >= s && i <= e) el.classList.add('sel');
+      } else if(selStart !== null && selEnd === null){
+        if(i === selStart) el.classList.add('sel');
+      }
+
+      el.addEventListener('click', ()=> tokenClicked(i));
+      tokensContainer.appendChild(el);
+    });
+
+    renderAnnotationsList();
+  }
+
+  // build nested view for annotations using parent-child relationships
+  function renderAnnotationsList(){
+    annotationsDiv.innerHTML = '';
+    if(currentIndex < 0 || currentIndex >= docs.length){ annotationsDiv.innerHTML = '<div class="small">No annotations</div>'; return; }
+    const doc = docs[currentIndex];
+    if(!doc.annotations || !doc.annotations.length){ annotationsDiv.innerHTML = '<div class="small">No annotations</div>'; return; }
+    // build nesting tree
+    const roots = buildNesting(doc.annotations);
+
+    function renderNode(node, depth=0){
+      const container = document.createElement('div'); container.style.paddingLeft = (depth*12)+'px';
+      const row = document.createElement('div'); row.className='ann-row';
+      const left = document.createElement('div'); left.className='ann-left';
+      const spanText = document.createElement('div'); spanText.className='ann-span';
+      spanText.innerHTML = `<strong>${node.label}</strong> — <span class="ann-meta">[${node.start},${node.end}]</span>`;
+      const snippet = document.createElement('div'); snippet.className='ann-meta'; snippet.textContent = doc.tokens.slice(node.start, node.end+1).join(' ');
+      left.appendChild(spanText); left.appendChild(snippet);
+      const right = document.createElement('div');
+      right.innerHTML = `<button class="btn" data-edit="${node.id}">Edit</button> <button class="btn" data-del="${node.id}">Del</button>`;
+      row.appendChild(left); row.appendChild(right);
+      container.appendChild(row);
+      annotationsDiv.appendChild(container);
+      // render children
+      if(node.children && node.children.length){
+        node.children.forEach(ch => renderNode(ch, depth+1));
+      }
+    }
+
+    // render all roots (they include nodes that aren't children of others)
+    roots.forEach(r => renderNode(r, 0));
+
+    // attach handlers: since we built nodes copies, map ids back to annotations in doc
+    annotationsDiv.querySelectorAll('[data-del]').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const id = b.getAttribute('data-del');
+        const idx = doc.annotations.findIndex(a=>a.id===id);
+        if(idx>=0){ if(confirm('Delete this annotation?')){ doc.annotations.splice(idx,1); renderCurrent(); saveState(); } }
+      });
+    });
+    annotationsDiv.querySelectorAll('[data-edit]').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const id = b.getAttribute('data-edit');
+        const idx = doc.annotations.findIndex(a=>a.id===id);
+        if(idx>=0){
+          const a = doc.annotations[idx];
+          const newLabel = prompt('Change label for selected token span', a.label);
+          if(newLabel){ a.label = newLabel; renderCurrent(); saveState(); }
+        }
+      });
+    });
+  }
+
+  // selection behavior
+  function tokenClicked(idx){
+    if(selStart === null){ selStart = idx; selEnd = null; }
+    else if(selStart !== null && selEnd === null){ selEnd = idx; }
+    else { selStart = idx; selEnd = null; }
+    renderCurrent();
+  }
+  function clearSelection(){ selStart = null; selEnd = null; }
+
+  // applying label: check partial overlap using isPartialOverlap
+  function applyLabelToSelection(labelName){
+    if(currentIndex < 0 || currentIndex >= docs.length){ alert('Open a document first'); return; }
+    if(selStart === null){ alert('Select tokens: click start token, then click end token, then apply label.'); return; }
+    const doc = docs[currentIndex];
+    const start = Math.min(selStart, (selEnd === null ? selStart : selEnd));
+    const end = Math.max(selStart, (selEnd === null ? selStart : selEnd));
+    const newSpan = {start, end};
+
+    if(isPartialOverlap(newSpan, doc.annotations || [])){
+      return alert('Partial/crossing overlaps are not allowed. Allowed: fully nested spans (containment).');
+    }
+    // add id for manipulation
+    const ann = {start, end, label: labelName, id: uid()};
+    doc.annotations.push(ann);
+    doc.annotations.sort((a,b)=> a.start - b.start || (a.end - a.start) - (b.end - b.start));
+    clearSelection(); renderCurrent(); saveState();
+  }
+
+  // build JSONL (tokenized_text + ner arrays)
+  function buildJsonl(){
+    return docs.map(d => {
+      const ner = (d.annotations || []).map(a => [a.start, a.end, a.label]);
+      return JSON.stringify({ tokenized_text: d.tokens, ner });
+    }).join("\n");
+  }
+  function triggerDownload(filename, content){
+    const blob = new Blob([content], {type:'application/json'}); const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 3000);
+  }
+
+  // event wiring
+  loadDocs.addEventListener('click', ()=>{ const raw = docsInput.value.split(/\r?\n/).map(s=>s).filter(s=>s.length>0); docs = raw.map(t=>({text:t,tokens:tokenize(t),annotations:[] })); currentIndex = docs.length?0:-1; clearSelection(); renderDocsList(); renderCurrent(); saveState(); });
+  clearDocs.addEventListener('click', ()=>{ docsInput.value=''; docs=[]; currentIndex=-1; clearSelection(); renderDocsList(); renderCurrent(); saveState(); });
+  resetAll.addEventListener('click', ()=>{ if(!confirm('Reset everything (clears saved state)?')) return; clearSavedState(); docsInput.value=''; labelsInput.value=''; docs=[]; labels=[]; currentIndex=-1; clearSelection(); showIndicesCheckbox.checked=true; renderLabelsArea(); renderLegend(); renderDocsList(); renderCurrent(); });
+
+  setLabels.addEventListener('click', ()=>{ const raw = labelsInput.value.trim(); if(!raw) return alert('Enter labels'); labels = raw.split(',').map(s=>s.trim()).filter(Boolean).map((name,i)=>({name,color:COLORS[i%COLORS.length]})); renderLabelsArea(); renderLegend(); renderCurrent(); saveState(); });
+  clearLabels.addEventListener('click', ()=>{ labelsInput.value=''; labels=[]; renderLabelsArea(); renderLegend(); renderCurrent(); saveState(); });
+
+  prevDoc.addEventListener('click', ()=>{ if(docs.length){ currentIndex = Math.max(0, currentIndex-1); clearSelection(); renderCurrent(); saveState(); }});
+  nextDoc.addEventListener('click', ()=>{ if(docs.length){ currentIndex = Math.min(docs.length-1, currentIndex+1); clearSelection(); renderCurrent(); saveState(); }});
+
+  exportJsonl.addEventListener('click', ()=>{ const txt = buildJsonl(); preview.textContent = txt; const w = window.open('','_blank'); w.document.write('<pre style="white-space:pre-wrap;padding:10px;background:#071122;color:#e6eef8;">'+escapeHtml(txt)+'</pre>'); });
+  downloadJsonl.addEventListener('click', ()=>{ triggerDownload('annotations.jsonl', buildJsonl()); });
+
+  showIndicesCheckbox.addEventListener('change', ()=>{ renderCurrent(); saveState(); });
+
+  document.addEventListener('keydown', (e)=>{
+    if(e.key >= '1' && e.key <= String(Math.min(9, labels.length))){ const idx = parseInt(e.key,10)-1; const lab = labels[idx]; if(lab) applyLabelToSelection(lab.name); }
+    if(e.key === 'Escape'){ clearSelection(); renderCurrent(); }
+  });
+
+  window.addEventListener('beforeunload', (e)=>{ e.preventDefault(); e.returnValue=''; });
+
+  // initialize: try load saved state, else example
+  const loaded = loadState();
+  if(!loaded){
+    const example = ["Looking for La conquesta du chasteau d' amours conquestee par l' umilite du beau doulx, the from Anonymous."];
+    docsInput.value = example.join("\n");
+    labelsInput.value = "title,author";
+    // load example into docs
+    docs = docsInput.value.split(/\r?\n/).map(s=>s).filter(Boolean).map(t=>({text:t,tokens:tokenize(t),annotations:[]}));
+    labels = labelsInput.value.split(',').map(s=>s.trim()).filter(Boolean).map((name,i)=>({name,color:COLORS[i%COLORS.length]}));
+    currentIndex = docs.length ? 0 : -1;
+    saveState();
+    renderLabelsArea(); renderLegend(); renderDocsList(); renderCurrent();
+  }
+
+  // helper: build nesting nodes (copied here for local scope)
+  function buildNesting(anns){
+    const sorted = (anns || []).slice().sort((x,y)=> x.start - y.start || (y.end - x.end));
+    const nodes = sorted.map(a => ({...a, children: []}));
+    for(let i=0;i<nodes.length;i++){
+      let parent = null;
+      for(let j=0;j<i;j++){
+        if(nodes[j].start <= nodes[i].start && nodes[j].end >= nodes[i].end){
+          if(!parent || (nodes[j].end - nodes[j].start) < (parent.end - parent.start)) parent = nodes[j];
+        }
+      }
+      if(parent) parent.children.push(nodes[i]);
+    }
+    // return roots (nodes not present as children)
+    return nodes.filter(n => !nodes.some(other => other !== n && other.children.includes(n)));
+  }
+
+})();
+</script>
+</body>
+</html>
