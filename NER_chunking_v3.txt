@@ -1,0 +1,512 @@
+⭐ 1. DIFFERENT NER METHODS (4 Families)
+
+1️⃣ Rule-Based / Pattern-Based NER
+
+Approach:
+Use regex, keyword lists, or pattern rules.
+Example: Email patterns, financial numbers, product codes.
+
+Pros:
+	•	Fast, predictable
+	•	No training required
+
+Cons:
+	•	Limited generalization
+	•	Hard to maintain manually
+
+Use cases:
+	•	Detecting IDs (customer IDs, invoice IDs)
+	•	Extracting dates, amounts, codes
+	•	Compliance checks
+
+⸻
+
+2️⃣ Statistical / Machine Learning NER (CRF, classical ML)
+
+Approach:
+Uses CRF/SVM with features like POS tags, capitalization, word shape.
+
+Pros:
+	•	More flexible than rules
+	•	Works for well-structured text
+
+Cons:
+	•	Needs feature engineering
+	•	Less accurate than transformer models
+
+Use cases:
+	•	Processing structured documents (forms, reports)
+	•	Legacy NER systems in enterprises
+
+⸻
+
+3️⃣ Deep Learning NER (BiLSTM-CRF)
+
+Approach:
+Neural models using embeddings + sequence tagging.
+
+Pros:
+	•	Good balance of speed + accuracy
+	•	Works well with moderate size datasets
+
+Cons:
+	•	Lower performance than transformers on rare entities
+
+Use cases:
+	•	Customer support text
+	•	Product reviews
+	•	Internal communication
+
+⸻
+
+4️⃣ Transformer-based NER (BERT, RoBERTa, DeBERTa, GPT-based)
+
+Approach:
+State-of-the-art contextual models.
+
+Pros:
+	•	Highest accuracy
+	•	Understands long contexts
+	•	Works across domains after fine-tuning
+
+Cons:
+	•	Requires GPU for large-scale use
+
+Use cases:
+	•	Legal, financial, medical documents
+	•	Search and RAG pipelines
+	•	Entity-centric document analytics
+
+
+⭐ 2. NER-FIRST CHUNKING METHODS (Alternatives to Single Chunking Method)
+
+Here are different chunking strategies, all of which use NER first, but group or assemble chunks differently.
+
+⸻
+
+Chunking Method 1 — Entity-Centric Sentence Grouping (Your main method)
+
+Logic:
+Group all sentences that mention the same entity into one chunk.
+
+Use cases:
+	•	Search everything about a person or company
+	•	Knowledge graph creation
+	•	RAG systems where retrieval must be entity-specific
+
+⸻
+
+Chunking Method 2 — Entity-Window Chunking (Local Context)
+
+Logic:
+For each entity mention:
+Take the sentence + N sentences before and after it
+→ create a smaller “context chunk”.
+
+Example:
+Window size = 1
+Sentence mentioning “Acme Corp” → also include its previous & next sentence.
+
+Use cases:
+	•	Retrieval tasks needing tight context
+	•	ML models that expect chunks 50–200 tokens
+	•	Avoiding overly big entity chunks
+
+⸻
+
+Chunking Method 3 — Paragraph-Level Entity Chunking
+
+Logic:
+Instead of grouping sentences globally,
+chunk at paragraph level:
+Every paragraph that contains an entity becomes a chunk.
+
+Use cases:
+	•	Corporate reports, whitepapers
+	•	Research papers
+	•	Long-form documents with meaningful paragraphs
+
+⸻
+
+Chunking Method 4 — Multi-Entity Cluster Chunking
+
+Logic:
+Cluster sentences based on entity co-occurrence:
+Sentences discussing the same set of entities go into the same chunk.
+
+Example cluster:
+	•	Sentences about (Acme Corp + John Doe) → Chunk A
+	•	Sentences about (BetaSoft + Acme Corp) → Chunk B
+
+Use cases:
+	•	Relationship extraction
+	•	Finding entity pairs that are frequently mentioned together
+	•	Business intelligence & risk analysis
+
+⸻
+
+Chunking Method 5 — NER + Topic Hybrid Chunking
+
+Logic:
+Step 1: Use NER to tag sentences
+Step 2: Use embeddings or topic modeling to detect themes
+Step 3: Combine entity + theme to create coherent chunks
+
+Example:
+Chunk = “Sentences about Acme Corp related to acquisitions”.
+
+Use cases:
+	•	Summarization systems
+	•	Document understanding pipelines
+	•	Enterprise search
+
+⸻
+
+Chunking Method 6 — NER + Timeline Chunking
+
+Logic:
+Combine NER with temporal entities (dates, months, years) and create:
+Chunks grouped by time period for the same entity.
+
+Example:
+Acme Corp:
+	•	2020 chunk
+	•	2021 chunk
+	•	2022 chunk
+
+Use cases:
+	•	Company history analysis
+	•	Legal case timelines
+	•	Financial event extraction
+
+⸻
+
+Chunking Method 7 — NER + Importance Scoring Chunking
+
+Logic:
+Choose only the top important sentences involving an entity
+based on scoring (TF-IDF / embeddings / attention).
+
+Use cases:
+	•	Summaries per entity
+	•	Executive briefing systems
+	•	Quick-glance analytics dashboards
+
+⸻
+
+Chunking Method 8 — NER + Role-Based Chunking
+
+(Useful for transcripts / dialogues)
+
+Logic:
+Chunk by entity AND the role of the speaker.
+Example:
+In a meeting transcript, chunk all John’s speaking turns.
+
+Use cases:
+	•	Customer service call analysis
+	•	Meeting summarization
+	•	Chatbot training data structuring
+
+
+
+SAMPLE DOCUMENT (used for methods 1–7)
+
+Document doc_1000:
+
+“Acme Corp announced today that CEO John Doe will step down next month. The company said Jane Roe will serve as interim CEO. In 2020, Acme acquired BetaSoft for $25M. Analysts at GlobalBank expect restructuring. John said he is proud of the team. A separate press release dated 2021-05-10 announced a new product launch by BetaSoft.”
+
+Sentence segmentation (IDs & texts)
+	•	s0: “Acme Corp announced today that CEO John Doe will step down next month.”
+	•	s1: “The company said Jane Roe will serve as interim CEO.”
+	•	s2: “In 2020, Acme acquired BetaSoft for $25M.”
+	•	s3: “Analysts at GlobalBank expect restructuring.”
+	•	s4: “John said he is proud of the team.”
+	•	s5: “A separate press release dated 2021-05-10 announced a new product launch by BetaSoft.”
+
+NER (detected entities; simplified)
+	•	s0: Acme Corp (ORG), John Doe (PERSON)
+	•	s1: Jane Roe (PERSON), (coref: “The company” → Acme Corp)
+	•	s2: 2020 (DATE), Acme (ORG), BetaSoft (ORG), $25M (MONEY)
+	•	s3: GlobalBank (ORG)
+	•	s4: John (PERSON) → coref → John Doe
+	•	s5: 2021-05-10 (DATE), BetaSoft (ORG), product launch (EVENT)
+
+Canonicalization (after coref / linking)
+	•	ent_acme (aliases: Acme Corp, Acme, the company)
+	•	ent_john_doe (aliases: John Doe, John)
+	•	ent_jane_roe
+	•	ent_betasoft
+	•	ent_globalbank
+
+
+METHOD 1 — Entity-Centric Sentence Grouping (the canonical method)
+
+Rule: For each canonical entity, collect all sentences in the document that mention that entity (via NER or coref). Preserve original order. Sentences may appear in multiple chunks.
+
+Chunks produced:
+	•	chunk_doc1000:ent_acme:1
+	•	sentences: [s0, s1, s2]
+	•	text: s0 + s1 + s2
+	•	entities: ent_acme, ent_john_doe, ent_jane_roe, ent_betasoft
+	•	chunk_doc1000:ent_john_doe:1
+	•	sentences: [s0, s4]
+	•	text: s0 + s4
+	•	entities: ent_john_doe, ent_acme
+	•	chunk_doc1000:ent_jane_roe:1
+	•	sentences: [s1]
+	•	text: s1
+	•	entities: ent_jane_roe
+	•	chunk_doc1000:ent_betasoft:1
+	•	sentences: [s2, s5]
+	•	text: s2 + s5
+	•	entities: ent_betasoft, MONEY, DATE
+	•	chunk_doc1000:ent_globalbank:1
+	•	sentences: [s3]
+	•	text: s3
+	•	entities: ent_globalbank
+
+Use-case: Best for search-by-entity and entity-focused RAG answers.
+
+⸻
+
+METHOD 2 — Entity-Window Chunking (local context)
+
+Rule: For every sentence that contains an entity mention, create a chunk consisting of that sentence plus N sentences before and after (configurable). De-duplicate overlaps.
+
+Assume window N=1.
+
+Raw per-mention windows (then merged/de-duplicated):
+	•	s0 (ent_acme, ent_john_doe) → include [s0, s1]
+	•	s1 (ent_jane_roe, ent_acme via coref) → include [s0, s1, s2] (merged with above)
+	•	s2 (ent_acme, ent_betasoft) → include [s1, s2, s3]
+	•	s3 (ent_globalbank) → include [s2, s3, s4]
+	•	s4 (ent_john_doe) → include [s3, s4, s5]
+	•	s5 (ent_betasoft, DATE) → include [s4, s5]
+
+Final de-duplicated chunks (examples):
+	•	chunk_win_1 sentences [s0,s1,s2] — covers Acme leadership + acquisition context
+	•	chunk_win_2 sentences [s2,s3,s4] — acquisition + analyst + John quote
+	•	chunk_win_3 sentences [s4,s5] — John quote + BetaSoft product launch
+
+Use-case: Use when you need concise context for each mention (e.g., feeding to a QA model that prefers short context windows).
+
+⸻
+
+METHOD 3 — Paragraph-Level Entity Chunking
+
+Rule: Treat each paragraph as a chunk; any paragraph that contains an entity becomes an entity-associated chunk. For multi-paragraph docs this is useful.
+
+Here: the whole sample is one paragraph; paragraph chunk = [s0..s5].
+
+Entity->paragraph chunks:
+	•	For ent_acme → paragraph chunk id p0 includes s0..s5 (if multiple paragraphs exist you’d only include the paragraphs containing the entity).
+
+Use-case: Long-form reports, research papers, legal docs where paragraphs are meaningful units.
+
+⸻
+
+METHOD 4 — Multi-Entity Cluster Chunking (co-occurrence clustering)
+
+Rule: Group sentences into chunks by co-occurrence patterns. Sentences that mention the same set (or overlapping set) of entities are grouped together.
+
+Process (example):
+	•	Cluster A (Acme + John Doe + Jane Roe): s0, s1
+	•	Cluster B (Acme + BetaSoft + MONEY): s2
+	•	Cluster C (GlobalBank + analyst context): s3
+	•	Cluster D (John Doe quote + BetaSoft launch context): s4, s5 — if overlap significant, may group s4 with s2/s3.
+
+Chunks produced:
+	•	chunk_cluster_A sentences [s0,s1]
+	•	chunk_cluster_B sentences [s2]
+	•	chunk_cluster_C [s3]
+	•	chunk_cluster_D [s4,s5]
+
+Use-case: Relationship discovery (who interacts with whom), BI analysis, entity-pair extraction.
+
+⸻
+
+METHOD 5 — NER + Topic Hybrid Chunking
+
+Rule: Tag sentences with entities, then run topic discovery (LDA/embeddings+clustering) and create chunks that are intersection of an entity and a topic. Example: “Acme — Acquisitions” vs “Acme — Leadership”.
+
+Example steps & output:
+	•	Topic modeling finds topics: T1=“leadership changes”, T2=“mergers & acquisitions”, T3=“product launches”
+	•	Map sentences to topics:
+	•	s0, s1 → T1 (leadership)
+	•	s2 → T2 (acq)
+	•	s5 → T3 (product)
+	•	s3, s4 → mixed (analyst & quote)
+	•	Create entity+topic chunks:
+	•	chunk_ent_acme_T1 sentences [s0,s1] (Acme leadership)
+	•	chunk_ent_acme_T2 sentences [s2] (Acme acquisition)
+	•	chunk_ent_betasoft_T3 sentences [s5] (BetaSoft product launch)
+
+Use-case: Generate focused summaries like “Acme — Acquisition Timeline”, or targeted RAG where you want to find entity-related content only for a particular theme.
+
+⸻
+
+METHOD 6 — NER + Timeline Chunking (time-window)
+
+Rule: Use DATE entities; group mentions of the same entity into time buckets (per year, quarter, or exact date). Helpful to construct chronology per entity.
+
+Example (bucketing by year):
+	•	s2 (2020) → ent_acme: 2020 bucket
+	•	s5 (2021-05-10) → ent_betasoft: 2021 bucket
+	•	s0,s1,s4 (no explicit date) → assign to document timestamp or “unknown” bucket
+
+Chunks produced (for ent_acme):
+	•	doc1000:ent_acme:2020 sentences [s2]
+	•	doc1000:ent_acme:unknown sentences [s0,s1]
+
+Use-case: Company timelines, legal case timelines, financial event tracking.
+
+⸻
+
+METHOD 7 — NER + Importance Scoring Chunking (top-K important sentences)
+
+Rule: Score sentences mentioning an entity by importance (combination of entity confidence, sentence length, TF-IDF, presence of money/dates, or attention weight). Keep top-K sentences as the entity chunk (or create a ranked list).
+
+Example scoring (illustrative):
+	•	s2 (Acme acquired BetaSoft for $25M) → high importance (money + acquisition) → score 0.98
+	•	s0 (CEO stepping down) → score 0.95
+	•	s1 (interim CEO) → 0.85
+	•	s4 (John proud) → 0.6
+	•	s5 (BetaSoft product launch) → 0.9
+
+Top-K (K=2) per entity
+	•	ent_acme → [s2, s0] (acquisition + leadership)
+	•	ent_john_doe → [s0, s4]
+	•	ent_betasoft → [s2, s5]
+
+Use-case: Executive summaries, alerts, briefings — when you want concise, high-signal info per entity.
+
+⸻
+
+METHOD 8 — Role-Based Chunking (transcripts / multi-speaker logs)
+
+Note: This uses “entity” = speaker identity (person entity + role). I’ll use a short meeting transcript.
+
+Transcript trans_01:
+	•	t_s0 [John Doe, CEO]: “We will pause hiring next quarter.”
+	•	t_s1 [Jane Roe, CFO]: “We need to cut spend by 10%.”
+	•	t_s2 [John Doe]: “Marketing will be impacted but we’ll prioritize key roles.”
+	•	t_s3 [Support Rep Bob]: “Customer churn increased by 2% last month.”
+
+NER+Speaker tags:
+	•	Speaker entities: ent_john_doe (role CEO), ent_jane_roe (CFO), ent_bob (Support)
+
+Role-based chunks:
+	•	chunk_trans01:speaker:ent_john_doe sentences [t_s0, t_s2]
+	•	text = John’s speaking turns (ordered)
+	•	chunk_trans01:speaker:ent_jane_roe [t_s1]
+	•	chunk_trans01:speaker:ent_bob [t_s3]
+
+Option: you can also combine speaker-role + topic: “John Doe — hiring decisions”.
+
+Use-case: Meeting summarization by speaker, coaching, compliance review, role-specific analytics.
+
+⸻
+
+API-style examples (same pattern used for all methods)
+
+You can expose simple endpoints like:
+	•	GET /entities/{id}/chunks?method=entity_centric → returns entity-centric chunks
+	•	GET /entities/{id}/chunks?method=window&N=1 → returns windowed chunks
+	•	GET /entities/{id}/chunks?method=topic&topic=acquisitions → returns entity+topic chunks
+	•	GET /entities/{id}/timeline?period=year → returns timeline buckets
+
+Each response includes: chunk_id, doc_id, sentence_indices, text_snippet, entities, score, provenance.
+
+
+
+Practical tips for selecting methods
+	•	If the business asks: “Show me everything about X” → use Entity-Centric or Timeline (if time-ordered).
+	•	If the downstream model needs ~200 tokens context → use Entity-Window (N tuned).
+	•	If you want relationship insights → use Multi-Entity Clustering.
+	•	If you want short executive summaries → use Importance-Scoring (top-K).
+	•	For long structured docs → use Paragraph-Level or Entity+Topic.
+
+
+⭐ FLOW CHART — NER Methods → Chunking Strategies
+
+
+                     ┌──────────────────────────┐
+                     │        INPUT TEXT         │
+                     │ (Document, Email, Log…)  │
+                     └─────────────┬────────────┘
+                                   │
+                                   ▼
+                    ┌───────────────────────────┐
+                    │     PREPROCESSING          │
+                    │ - Clean text               │
+                    │ - Sentence segmentation    │
+                    │ - Paragraph detection      │
+                    └─────────────┬─────────────┘
+                                  │
+                                  ▼
+         ┌────────────────────────────────────────────────────┐
+         │                     NER METHODS                     │
+         ├──────────────────────┬──────────────────────────────┤
+         │ 1. Rule-Based        │ 2. Statistical ML (CRF)      │
+         │ (Regex, patterns)    │                              │
+         ├──────────────────────┼──────────────────────────────┤
+         │ 3. Deep Learning NER (BiLSTM-CRF)                   │
+         ├──────────────────────┼──────────────────────────────┤
+         │ 4. Transformer-based NER (BERT, RoBERTa, GPT, etc) │
+         └──────────────────────┴──────────────────────────────┘
+                                  │
+                                  ▼
+                     ┌─────────────────────────────┐
+                     │    ENTITY NORMALIZATION      │
+                     │ - Coreference (John ~ John Doe) 
+                     │ - Alias merging (Acme ~ Acme Corp)
+                     └──────────────┬────────────────┘
+                                    │
+                                    ▼
+                     ┌──────────────────────────────┐
+                     │    ENTITY-ANNOTATED TEXT      │
+                     │ (Each sentence has entities)  │
+                     └──────────────┬───────────────┘
+                                    │
+                                    ▼
+   ┌───────────────────────────────────────────────────────────────────────────┐
+   │                          CHUNKING STRATEGIES (NER-FIRST)                  │
+   ├─────────────────────────────┬─────────────────────────────────────────────┤
+   │ 1. Entity-Centric Chunking  │ Group sentences by entity                   │
+   ├─────────────────────────────┼─────────────────────────────────────────────┤
+   │ 2. Entity-Window Chunking   │ Sentence ± N neighbors                      │
+   ├─────────────────────────────┼─────────────────────────────────────────────┤
+   │ 3. Paragraph-Level Chunking │ Keep entire paragraphs with entity          │
+   ├─────────────────────────────┼─────────────────────────────────────────────┤
+   │ 4. Multi-Entity Clustering  │ Cluster sentences with same entity sets     │
+   ├─────────────────────────────┼─────────────────────────────────────────────┤
+   │ 5. NER + Topic Hybrid       │ Group by entity + topic/theme               │
+   ├─────────────────────────────┼─────────────────────────────────────────────┤
+   │ 6. Timeline Chunking        │ Group entity sentences by date/time         │
+   ├─────────────────────────────┼─────────────────────────────────────────────┤
+   │ 7. Importance Scoring       │ Top-K important entity sentences            │
+   ├─────────────────────────────┼─────────────────────────────────────────────┤
+   │ 8. Role-Based Chunking      │ Speaker/entity grouping in transcripts      │
+   └─────────────────────────────┴─────────────────────────────────────────────┘
+                                    │
+                                    ▼
+                     ┌──────────────────────────────────┐
+                     │        FINAL CHUNKS STORED        │
+                     │ - Entity-specific chunks          │
+                     │ - Relationship chunks             │
+                     │ - Topic chunks                    │
+                     │ - Timeline chunks                 │
+                     └──────────────────────────────────┘
+                                    │
+                                    ▼
+                     ┌──────────────────────────────────┐
+                     │    DOWNSTREAM USE CASES           │
+                     │ - Search                          │
+                     │ - RAG (LLM retrieval)             │
+                     │ - Analytics / BI                  │
+                     │ - Summaries                       │
+                     │ - Knowledge graphs                │
+                     │ - Compliance / risk analysis      │
+                     └──────────────────────────────────┘
+
