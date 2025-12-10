@@ -1,0 +1,176 @@
+FLOWCHART: NER + COREFERENCE RESOLUTION + CHUNKING PIPELINE
+
+                           ┌───────────────────────┐
+                           │     INPUT TEXT        │
+                           │ (PDF, Word, etc.)     │
+                           └──────────┬────────────┘
+                                      │
+                                      ▼
+                    ┌───────────────────────────────────┐
+                    │        PREPROCESSING              │
+                    │ - Extract text from PDF/Word      │
+                    │ - Sentence segmentation           │
+                    │ - Clean formatting                │
+                    └──────────┬────────────────────────┘
+                               │
+                               ▼
+                    ┌───────────────────────────────────┐
+                    │         NER MODULE                │
+                    │  (Transformer models: BERT, etc.) │
+                    │ - Identify explicit entities       │
+                    │   (ORG, PERSON, PRODUCT, DATE)    │
+                    └──────────┬────────────────────────┘
+                               │
+                               ▼
+                       ┌──────────────────┐
+                       │ COREF MODULE     │
+                       │ (SpanBERT, LLM,  │
+                       │  Longformer)     │
+                       │ - Link pronouns  │
+                       │   to entities    │
+                       └──────────┬───────┘
+                                  │
+                                  ▼
+                     ┌────────────────────────────────────┐
+                     │ ENTITY NORMALIZATION                │
+                     │ - Merge aliases: (SBI, the bank)    │
+                     │ - Replace pronouns with canonical   │
+                     │ - Build clusters: entity → mentions │
+                     └──────────┬──────────────────────────┘
+                                  │
+                                  ▼
+                  ┌─────────────────────────────────────────────┐
+                  │     SENTENCE → ENTITY MAPPING               │
+                  │ - Each sentence now linked to correct       │
+                  │   entity/entities (after coref)             │
+                  └──────────┬──────────────────────────────────┘
+                                  │
+                                  ▼
+         ┌────────────────────────────────────────────────────────────────┐
+         │                     CHUNKING ENGINE (NER-Driven)               │
+         │                                                                │
+         │ 1. Entity-Centric Chunking                                     │
+         │ 2. Paragraph Chunking                                           │
+         │ 3. Topic + Entity Chunking                                     │
+         │ 4. Multi-Entity Clustering                                     │
+         │ 5. Timeline Chunking                                           │
+         └──────────┬─────────────────────────────────────────────────────┘
+                    │
+                    ▼
+           ┌──────────────────────────────┐
+           │       FINAL CHUNKS           │
+           │ - Clean entity-specific text │
+           │ - Context-aware chunks       │
+           │ - Indexed for search/RAG     │
+           └──────────────────────────────┘
+
+
+
+⭐ EXAMPLE USAGE: FULL PIPELINE RUN (WITH MULTIPLE ENTITIES + PRONOUNS)
+
+Let’s use this paragraph:
+
+“State Bank of India partnered with Microsoft to build new AI solutions.
+It will provide financial datasets, while the tech giant will offer cloud infrastructure.
+They believe the collaboration will help millions of customers.
+Microsoft said it will integrate Azure services with the bank’s systems.”
+
+This is difficult because:
+	•	There are multiple entities
+	•	Multiple pronouns pointing to different entities
+	•	Multiple aliases (“tech giant”, “the bank”)
+
+We will run this through the flowchart.
+
+
+⭐ STEP 1 — NER Output
+
+NER identifies only explicit entities:
+
+Sentence
+Entities
+S1
+State Bank of India, Microsoft
+S2
+(none, except “tech giant” might not be NER-labeled)
+S3
+(none)
+S4
+Microsoft, Azure
+
+
+NER misses pronouns → chunking would fail without coref.
+
+⸻
+
+⭐ STEP 2 — Coreference Resolution Output
+
+Coref system finds entity clusters:
+
+Cluster A — State Bank of India
+	•	“State Bank of India”
+	•	“It” (in S2)
+	•	“the bank” (S4)
+	•	“it” (2nd mention in S4)
+
+Cluster B — Microsoft
+	•	“Microsoft”
+	•	“the tech giant”
+	•	“They”
+	•	“it” (1st mention in S4)
+
+Cluster C — Azure
+	•	“Azure”
+	•	(no pronouns)
+
+Coref correctly distinguishes two different “it” inside the same sentence:
+
+“Microsoft said it will integrate Azure services with the bank’s systems.”
+→ “it” = Microsoft
+→ “the bank” = SBI
+
+⸻
+
+⭐ STEP 3 — Entity Normalization
+
+Now we map aliases & pronouns:
+
+Mention - Canonical Entity
+State Bank of India - SBI
+It - SBI
+the bank - SBI
+Microsoft - MSFT
+The tech giant - MSFT
+They - MSFT
+it (S4) - MSFT
+Azure - Azure
+
+
+⭐ STEP 4 — Sentence → Entity Mapping
+
+Now each sentence knows EXACTLY which entities it relates to:
+
+
+Sentence - Entities
+S1 - SBI, MSFT
+S2 - SBI, MSFT
+S3 - MSFT
+S4 - MSI, SBI, Azure
+
+
+⭐ STEP 5 — CHUNKING RESULTS
+
+Now chunking produces perfect entity-specific chunks.
+
+⸻
+
+✔ Entity-Centric Chunk: State Bank of India
+
+Sentences:
+	•	S1
+	•	S2
+	•	S4
+
+Chunk_SBI
+
+and so on....
