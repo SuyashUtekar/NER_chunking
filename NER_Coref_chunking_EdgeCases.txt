@@ -1,0 +1,259 @@
+Yes — even the best NER + Coreference + Chunking systems have several edge cases, pitfalls, and problematic scenarios.
+
+EDGE CASE CATEGORY 1 — Ambiguous Pronouns
+
+Example:
+
+“Amazon partnered with Microsoft.
+It announced a new cloud service.”
+
+Who is “It”?
+	•	Could be Amazon
+	•	Could be Microsoft
+
+Even humans sometimes need more context.
+
+Why it happens:
+	•	Pronoun refers to the most recent subject (syntactic rule)
+	•	But semantics sometimes contradict grammar
+
+Coref models struggle when:
+	•	Both entities are similar type (ORG + ORG)
+	•	Both can logically perform the action
+
+Mitigation:
+
+✔ Use LLM-based coref — best at world knowledge
+✔ Use additional features:
+	•	Verb semantics (“announced” usually → company with press activity)
+✔ Apply confidence scores and fallback logic
+
+
+
+EDGE CASE CATEGORY 2 — Pronouns Without Antecedent
+
+Example:
+
+“It is believed that the company will acquire BetaSoft.”
+
+What is “it”?
+
+Sometimes:
+	•	“It” is impersonal (“It is raining”)
+	•	No real entity exists
+
+NER + Coref incorrectly assigns “it” to the nearest entity.
+
+Mitigation:
+
+✔ Detect dummy pronouns
+✔ Use semantic rules (“it is believed” → no real entity)
+
+
+
+EDGE CASE CATEGORY 3 — Long-Distance Coreference
+
+Example:
+
+Paragraph 1 introduces “State Bank of India”.
+Paragraph 6 says: “The bank also expanded its operations.”
+
+NER + Coref often fail when:
+	•	Entities are separated by multiple paragraphs
+	•	Document is very long (PDFs often >10,000 tokens)
+
+Mitigation:
+
+✔ Use Longformer-based coref (handles long texts)
+✔ Use sliding windows with context overlap
+✔ Use LLM coref over paragraph pairs
+
+
+
+EDGE CASE CATEGORY 4 — Multiple Entities of Same Type
+
+Example:
+
+“John met Michael after he visited the office.”
+
+Who is “he”?
+	•	John?
+	•	Michael?
+
+Ambiguity again.
+
+Mitigation:
+
+✔ Use verb semantics (“visited” → maybe the subject relevant to that action)
+✔ Use role information (titles, organization)
+✔ Use LLM reasoning
+
+
+
+EDGE CASE CATEGORY 5 — Organization Aliases Not Handled
+
+Example:
+
+“State Bank of India (SBI) reported profits.
+The bank also announced a merger.”
+
+If alias detection fails:
+	•	“SBI” and “the bank” may not merge
+	•	Chunking will split incorrectly
+
+Mitigation:
+
+✔ Use alias matching rules
+✔ Preload entity dictionaries
+✔ Use embedding similarity (SBI ↔ State Bank of India)
+
+
+
+
+EDGE CASE CATEGORY 6 — Nested Entities
+
+Example:
+
+“Microsoft Azure services were upgraded.”
+
+NER might output:
+	•	Microsoft → ORG
+	•	Azure → PRODUCT
+But what is the subject of pronoun later?
+
+Example:
+
+“It will be rolled out globally.”
+
+Does “it” refer to:
+	•	Azure?
+	•	Azure services?
+	•	Microsoft?
+
+Mitigation:
+
+✔ Use dependency parsing
+✔ Use NER span hierarchy
+✔ Apply LLM coref reasoning
+
+
+
+EDGE CASE CATEGORY 7 — Incorrect NER → Incorrect Coref
+
+If NER mistakenly labels:
+	•	“Apple” as fruit instead of company
+	•	“Jordan” as person instead of location
+
+Then coref linking will be wrong.
+
+Mitigation:
+
+✔ Use domain-specific NER
+✔ Allow model to override NER misclassifications
+
+
+
+EDGE CASE CATEGORY 8 — Coref Splitting One Entity Into Two
+
+Example:
+
+“The United Nations met today.
+The organization said it would deploy forces.”
+
+Sometimes coref does:
+
+Cluster A: “United Nations”
+Cluster B: “The organization”
+
+This causes duplicate entity chunks.
+
+Mitigation:
+
+✔ Use alias merging rules
+✔ Use entity-type matching (ORG ↔ ORG)
+✔ Use fuzzy name matching
+
+
+
+EDGE CASE CATEGORY 9 — Misinterpreting Plural Pronouns
+
+Example:
+
+“The committee met with the board.
+They approved the decision.”
+
+“They” could refer to:
+	•	The committee
+	•	The board
+	•	Both
+
+Mitigation:
+
+✔ Use sentence structure
+✔ Use coref models trained on plural references
+✔ Use LLM cluster scoring
+
+
+
+EDGE CASE CATEGORY 10 — Garbage Text from PDF Extraction
+
+Real PDFs contain:
+	•	Broken sentences
+	•	Hyphenated words
+	•	Wrong sentence boundaries
+	•	Missing periods
+	•	Mixed headers/footers
+
+This breaks:
+	•	sentence segmentation
+	•	NER
+	•	coref
+	•	chunking
+
+Mitigation:
+
+✔ Use dedicated PDF extraction tools (GROBID, Adobe Extract, pdfplumber)
+✔ Clean text aggressively
+✔ Use layout-aware models
+
+
+
+WHAT DOES YOUR PIPELINE NEED TO HANDLE THESE?
+
+✔ A robust alias merging engine
+
+(“the bank”, “SBI”, “State Bank of India” → same)
+
+✔ Confidence-based fallback
+
+If coref is unsure:
+	•	Do NOT misassign pronoun
+	•	Mark pronoun as ambiguous
+
+✔ Sentence window context
+
+Use context from nearby sentences during coref
+
+✔ Chunking should allow sentences to belong to multiple entities
+
+Prevents loss of information in ambiguous cases
+
+✔ Keep pronoun resolution scores
+
+If low confidence → chunker handles carefully
+
+⸻
+
+FINAL SUMMARY (VERY IMPORTANT)
+
+Coreference resolution is powerful but not perfect.
+
+It will inevitably encounter edge cases due to ambiguity in human language.
+
+Your pipeline must:
+	•	Use strong models (transformers, LLMs)
+	•	Apply alias and pronoun rules
+	•	Use confidence scores
+	•	Allow fallback behaviors
+
+If you do this → your NER-driven chunking pipeline will be strong enough for 95% real-world documents.
