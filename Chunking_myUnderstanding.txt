@@ -1,0 +1,188 @@
+⭐ FIRST — THINK OF NER AND COREF LIKE A TEAM
+
+🧩 NER = Finds names
+
+Example: “State Bank of India”, “Microsoft”, “Azure”
+
+🧠 Coreference resolution (Coref) = Finds who pronouns refer to
+
+Example: “it”, “they”, “the tech giant”, “the bank”
+
+NER does NOT know pronouns.
+Coref does NOT know which words are named entities.
+
+So we make them work together.
+
+⸻
+
+⭐ STEP 1 — NER FINDS ALL THE REAL ENTITY NAMES
+
+Input text:
+
+“State Bank of India partnered with Microsoft to build new AI solutions.
+It will provide financial datasets, while the tech giant will offer cloud infrastructure.
+They believe the collaboration will help millions of customers.
+Microsoft said it will integrate Azure services with the bank’s systems.”
+
+NER output:
+
+Sentence - Entities Found
+S1 - State Bank of India, Microsoft
+S2 - (none detected)
+S3 - (none detected)
+S4 - Microsoft, Azure
+
+👉 NER does NOT detect “it”, “they”, “the tech giant”, “the bank”
+It only detects names.
+
+
+⭐ STEP 2 — NOW COREFERENCE TAKES OVER
+
+Coreference tries to answer:
+
+“Which noun is each pronoun talking about?”
+
+It sees sentences, context, and entity names identified by NER.
+This is important:
+
+🧠 Coref uses NER output as “anchors”
+
+NER tells coref which things are definitely entities.
+
+So coref knows:
+	•	“State Bank of India” = an organization
+	•	“Microsoft” = an organization
+	•	“Azure” = a product
+	•	“the bank” → probably refers to an organization
+	•	“the tech giant” → could refer to Microsoft
+	•	“it” → ambiguous, need context
+
+Without NER, coref would not know “Microsoft” is a company.
+
+⸻
+
+⭐ STEP 3 — COREF LINKS PRONOUNS TO ENTITIES
+
+Let’s walk through it as coref sees it, sentence by sentence.
+
+⸻
+
+🔎 Sentence 1
+
+State Bank of India partnered with Microsoft …
+
+NER: SBI + Microsoft
+Coref: No pronouns here.
+
+⸻
+
+🔎 Sentence 2
+
+It will provide financial datasets, while the tech giant will offer cloud infrastructure.
+
+Coref looks backward:
+	•	“It” → What was the last subject capable of providing datasets?
+State Bank of India
+(Banks provide datasets; Microsoft does not. Also grammatical structure.)
+	•	“the tech giant” → Which known entity fits “tech giant”?
+Microsoft
+
+So coref assigns:
+
+Word - Coref result
+It - State Bank of India
+the tech giant - Microsoft
+
+🔎 Sentence 3
+
+They believe the collaboration will help millions of customers.
+
+Possible options for “they”:
+	•	SBI (singular)
+	•	Microsoft (singular)
+	•	Collaboration (not a person)
+
+Coref uses grammar rules:
+
+“They” = plural
+
+Which entity is plural?
+→ The only reasonable plural interpretation is Microsoft leadership / team.
+
+So coref maps:
+
+They → Microsoft
+
+⸻
+
+🔎 Sentence 4
+
+Microsoft said it will integrate Azure services with the bank’s systems.
+
+This has multiple pronouns, so coref uses:
+	•	Previous sentence context
+	•	World knowledge
+	•	Entity type
+	•	Syntactic patterns
+
+1️⃣ “it” → Who will integrate services?
+→ “Microsoft”, because it is the subject of the sentence.
+
+2️⃣ “the bank” → Which bank-related entity is known?
+→ “State Bank of India”
+
+Word - Coref result
+it - Microsoft
+the bank - State Bank of India
+
+⭐ STEP 4 — NOW WE COMBINE NER + COREF OUTPUT
+
+This is the key idea:
+
+NER finds the names → Coref links pronouns → We merge both to create a full list of mentions per entity.
+
+Final Mapping:
+
+Entity - All Mentions Referring to It
+SBI - State Bank of India, It, the bank
+Microsoft - Microsoft, the tech giant, They, it
+Azure - Azure
+
+
+This is how the system knows exactly which sentences belong to which entity.
+
+⸻
+
+⭐ STEP 5 — HOW CHUNKING USES THIS
+
+Now chunking becomes very easy.
+
+For SBI chunk:
+
+Include all sentences where SBI or its pronouns appear:
+	•	S1 (explicit)
+	•	S2 (“It”)
+	•	S4 (“the bank”)
+
+For Microsoft chunk:
+
+Include sentences:
+	•	S1 (explicit)
+	•	S2 (“tech giant”)
+	•	S3 (“They”)
+	•	S4 (“it”)
+
+⸻
+
+⭐ FINAL SUMMARY (Super Simple)
+
+✔ NER finds names like “Microsoft”, “State Bank of India”
+
+✔ Coref uses NER to decide what pronouns like “it”, “they”, “the bank” refer to
+
+✔ Everything is merged into canonical entities
+
+✔ Chunking uses the merged mapping to group sentences correctly for each entity
+
+This is how the pipeline handles multiple entities + multiple pronouns accurately.
+
