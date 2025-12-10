@@ -1,0 +1,36 @@
+You an expert researcher and AIML expert 
+
+I want to create a NER driven Chunking service that do chunking using NER, for my organisation, in which i will give textual data as input and then based on that i will do NER identification and after that using NER i want to create chunks of the text sentences, or paragraphs, in which chunks will not be the NER entities but the textual sentences or paragraphs 
+
+So, initially i want to create high level architecture that fits to all the scenarios and categories of textual data and now I don’t want any code, just want that how i will initiate and create a architectural flow
+
+And also for this i want to create a documentation that i will be using to explain everything to my manager
+
+
+
+Give me the example usage on the above basic NER driven chunking implementation, so that i can understand how each step outputs
+
+
+
+But i want chunks where each chunks contain sentences that has same NER entity,
+
+So that for down streaming task like i want to search something about a particular NER entity so that i will get data or details about that in this NER entity chunk
+
+
+
+Dont make this very complicated, my manager just want to know how will i approach and implement NER driven Chunking for each and every scenerios
+
+
+Give me the differ NER methods and 
+
+in this single chunking method is used, so give me some more alternatives that uses NER previously then chunking.
+
+Along with their use cases that where can we use them
+
+
+
+Give me the example usage implementation of all the NER first chunking method
+
+
+
+Create a flow chart for NER methods and chunking strategies which were given above,
