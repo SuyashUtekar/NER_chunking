@@ -1,0 +1,226 @@
+1️⃣ Input Ingestion
+
+Input sources
+	•	PDFs
+	•	Word documents
+	•	Text files
+	•	Scanned documents (OCR-enabled)
+
+Goal
+	•	Accept raw enterprise documents with metadata (doc_id, source, domain).
+
+
+2️⃣ Preprocessing
+
+What happens
+	•	Text extraction from PDF / Word (layout-aware if possible)
+	•	OCR for scanned pages
+	•	Sentence segmentation
+	•	Paragraph detection
+	•	Formatting cleanup (headers, footers, line breaks)
+
+Output
+	•	Clean sentences + paragraph boundaries
+	•	Document structure preserved where possible
+
+
+3️⃣ Named Entity Recognition (NER Module)
+
+What happens
+	•	Transformer-based NER (GLiNER / BERT / domain models)
+	•	Dictionary / Gazetteer NER (banks, companies, products)
+	•	Rule-based NER (dates, IDs, numbers, codes)
+
+Detects
+	•	ORG, PERSON, LOCATION, PRODUCT, DATE, MONEY, etc.
+
+Output
+	•	Raw entity mentions (explicit names only)
+	•	Each mention has span, type, confidence
+
+⚠️ Pronouns are NOT handled here
+
+4️⃣ Entity Name Normalization (NEW – IMPORTANT)
+
+What happens
+	•	Normalize surface forms for comparison:
+	•	Strip articles: the, a, an
+	•	Case folding
+	•	Whitespace normalization
+
+Example
+	•	“The Ministry of Finance”
+	•	“Ministry of Finance”
+→ normalized key: ministry of finance
+
+Why here
+	•	Prevents duplicate entities before aliasing and coref
+
+⸻
+
+5️⃣ Acronym & Abbreviation Resolution (NEW – IMPORTANT)
+
+What happens
+	•	Resolve short forms → full names
+
+How
+	1.	Explicit patterns
+	•	State Bank of India (SBI)
+	2.	Acronym dictionary
+	•	SBI → State Bank of India
+	3.	Contextual validation (fallback)
+	•	Initial letters + entity type + context match
+
+Output
+	•	Acronyms merged into canonical entities
+
+⸻
+
+6️⃣ Alias / Synonym Resolution
+
+What happens
+	•	Merge name variants and descriptive noun phrases
+
+Examples
+	•	SBI ↔ State Bank of India
+	•	Microsoft ↔ the tech giant
+	•	Infosys ↔ the company
+
+How
+	•	Dictionaries
+	•	String similarity
+	•	Embedding similarity
+	•	Domain heuristics
+
+Output
+	•	One entity = many name variants
+
+⸻
+
+7️⃣ Coreference Resolution (COREF MODULE)
+
+Models
+	•	fastcoref / SpanBERT / Longformer / LLM fallback
+
+What happens
+	•	Link pronouns and references:
+	•	it, its, they
+	•	the bank, the ministry, the company
+
+CRITICAL RULE
+	•	Coref does NOT create entities
+	•	It only attaches references to existing entities
+
+Filtering rule
+	•	Keep only coref clusters that contain at least one NER entity
+	•	Drop concept-only clusters (e.g., “this initiative”, “the agreement”)
+
+⸻
+
+8️⃣ Entity Normalization & Clustering
+
+What happens
+	•	Merge:
+	•	Normalized names
+	•	Acronyms
+	•	Aliases
+	•	Coreference mentions
+
+Result
+	•	One canonical entity per real-world object
+
+Example
+
+Entity: State Bank of India
+Mentions:
+- State Bank of India
+- SBI
+- the bank
+- it
+- its
+
+9️⃣ Domain-Specific Extensions (Optional but Powerful)
+
+Examples
+	•	Ontology / Knowledge Base linking (Wikidata, internal KB)
+	•	Entity ID assignment
+	•	Numerical normalization (dates, currencies)
+	•	Knowledge graph linking
+
+Used when
+	•	Finance, legal, healthcare, compliance domains
+
+⸻
+
+🔟 Sentence → Entity Mapping
+
+What happens
+	•	Each sentence is linked to the canonical entity/entities it mentions
+	•	Uses:
+	•	Entity mentions
+	•	Alias matches
+	•	Coref links
+
+Optional
+	•	Sentiment detection per sentence
+	•	Stance / tone tagging
+
+Output
+
+Sentence 3 → [State Bank of India, Microsoft]
+
+1️⃣1️⃣ Chunking Engine (NER-Driven)
+
+Chunking strategies
+	•	Entity-centric chunking
+	•	Paragraph chunking
+	•	Topic + entity chunking
+	•	Multi-entity clustering
+	•	Timeline-based chunking
+
+Key rule
+	•	Chunking happens ONLY after full entity resolution
+
+⸻
+
+1️⃣2️⃣ Final Chunks
+
+Each chunk contains
+	•	Clean, coherent text
+	•	Entity-specific context
+	•	Optional sentiment/topic tags
+	•	Metadata (entity_id, source, confidence)
+
+Ready for
+	•	Search
+	•	Analytics
+	•	Knowledge graphs
+	•	RAG pipelines
+
+⸻
+
+🔑 Key Improvements vs Original Diagram
+
+✅ Added
+	•	Entity name normalization
+	•	Acronym resolution (explicit step)
+	•	Proper alias resolution
+	•	Coref filtering rules
+
+🔁 Corrected
+	•	Coref placed after alias/acronym resolution
+	•	Pronouns treated as mentions, not entities
+
+🧠 Clarified
+	•	Coref ≠ aliasing
+	•	NER defines entities, coref only links references
+
+⸻
+
+⭐ One-line summary (manager-friendly)
+
+We first identify real entities, normalize and unify all their names, resolve acronyms and aliases, then attach pronouns using coreference, and finally create clean entity-aware chunks for search and RAG.
+
+
+
+
