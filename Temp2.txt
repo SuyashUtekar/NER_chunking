@@ -1,0 +1,166 @@
+1. Super Admin – Platform Control UI
+
+Purpose: Global governance and protection of the platform.
+
+What They See in UI-UI
+
+Dashboard
+	•	Platform health (uptime, latency, errors)
+	•	Total requests across all projects
+	•	Active tenants / projects
+	•	Policy violations summary
+
+Navigation
+	•	Tenants & Projects
+	•	Model Registry
+	•	Global Policies & Guardrails
+	•	Security & Access
+	•	Audit & Lineage Logs
+	•	System Health
+
+Key Screens
+	•	Model Registry View
+	•	Model name, version, status (active/blocked)
+	•	Usage metrics and latency
+	•	Global Policy Configuration
+	•	Explanation boundaries
+	•	Mandatory disclaimers
+	•	Redaction rules
+	•	Audit & Lineage Viewer
+	•	Input → prompt → model → output trace
+	•	User, role, timestamp
+	•	Emergency Controls
+	•	Disable feature/model
+	•	Rollback approved versions
+
+What They CANNOT See/Edit
+	•	Day-to-day project prompts
+	•	Project-specific drafts (unless override)
+
+⸻
+
+2. Admin (Project / Tenant Admin) – Configuration UI
+
+Purpose: Control explainability usage within a project.
+
+What They See in UI-UI
+
+Dashboard
+	•	Project-level usage metrics
+	•	Enabled explainability features
+	•	Pending approvals count
+
+Navigation
+	•	Project Settings
+	•	Feature Configuration
+	•	Users & Roles
+	•	Usage Analytics
+	•	Project Audit Logs
+
+Key Screens
+	•	Feature Toggle Screen
+	•	Enable / disable:
+	•	Explanation
+	•	Simplification
+	•	Summarization
+	•	User & Role Assignment
+	•	Assign Maker / Checker / Users
+	•	Allowed User Controls
+	•	Explanation depth options
+	•	Output formats
+	•	Language availability
+	•	Analytics
+	•	Requests per feature
+	•	Errors and performance
+
+What They CANNOT See/Edit
+	•	Prompt content
+	•	Explanation logic
+	•	Global policies
+
+⸻
+
+3. Maker – Explainability Studio UI
+
+Purpose: Build and improve explainability logic.
+
+What They See in UI-UI
+
+Dashboard
+	•	My drafts
+	•	Feedback from checkers
+	•	Submission status
+
+Navigation
+	•	Prompt Templates
+	•	Explanation Logic
+	•	Simplification Rules
+	•	Test Playground
+	•	Submission History
+
+Key Screens
+	•	Prompt / Logic Editor
+	•	Versioned prompt templates
+	•	Domain rules
+	•	Test Playground
+	•	Input text
+	•	Output preview
+	•	Confidence indicators
+	•	Draft Management
+	•	Save drafts
+	•	Compare versions
+	•	Submission Screen
+	•	Submit for checker approval
+	•	Add change description
+
+What They CANNOT Do
+	•	Approve changes
+	•	Deploy to production
+	•	Modify global/project policies
+
+⸻
+
+4. Checker – Governance Review UI
+
+Purpose: Ensure correctness, safety, and compliance.
+
+What They See in UI-UI
+
+Dashboard
+	•	Pending review items
+	•	SLA status
+	•	Risk alerts
+
+Navigation
+	•	Pending Reviews
+	•	Approved Versions
+	•	Rejected Items
+	•	Risk & Compliance Flags
+	•	Audit Notes
+
+Key Screens
+	•	Side-by-Side Comparison
+	•	Old vs new explanation output
+	•	Highlighted changes
+	•	Risk Indicators
+	•	PII leakage check
+	•	Bias / hallucination flags
+	•	Policy violations
+	•	Review Actions
+	•	Approve
+	•	Reject
+	•	Request changes
+	•	Commenting Panel
+	•	Mandatory comments on rejection
+
+What They CANNOT Do
+	•	Edit prompts
+	•	Change configurations
+	•	Override global policies
+
+One-Line Summary
+	•	Super Admin: Governs the platform
+	•	Admin: Configures project usage
+	•	Maker: Builds explainability logic
+	•	Checker: Approves and certifies it
+
