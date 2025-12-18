@@ -1,0 +1,151 @@
+AI Explainability Platform – Role-Based Summary
+
+Objective (1 line)
+
+Build an enterprise explainability platform that provides elaboration, simplification, and summarization of AI outputs with strong governance, reuse, and compliance.
+
+⸻
+
+Roles & Responsibilities (High Level)
+
+1. Super Admin (Platform Owner)
+
+Responsibility
+	•	Owns the platform globally
+	•	Defines policies, guardrails, and compliance rules
+	•	Controls model registry and emergency actions
+
+What they do NOT do
+	•	No project-level configuration
+	•	No prompt authoring
+
+⸻
+
+2. Admin (Project / Tenant Owner)
+
+Responsibility
+	•	Configures how features behave for a project
+	•	Sets limits, defaults, and allowed options
+	•	Manages users and roles
+
+Key Configurations
+	•	AI Elaborator:
+	•	Select approved prompt template
+	•	Allowed tones (Basic / Technical / Executive)
+	•	Default tone
+	•	Max tokens
+	•	KB selection for factual elaboration
+	•	AI Simplifier:
+	•	Simplification levels
+	•	Preserve domain terms
+	•	AI Summarizer:
+	•	Summary types
+	•	Length limits
+	•	Output format
+
+What Admin does NOT do
+	•	Cannot edit prompts
+	•	Cannot approve logic
+
+⸻
+
+3. Maker (Platform Intelligence Designer)
+
+Responsibility
+	•	Designs prompt templates and intelligence
+	•	Creates reusable, domain-aware templates
+	•	Defines safe parameters
+
+Key Activities
+	•	Create prompt templates
+	•	Define supported tones and parameters
+	•	Test against edge cases
+	•	Submit templates for approval
+
+No Production Control
+	•	Cannot deploy or approve
+
+⸻
+
+4. Checker (Governance & Compliance)
+
+Responsibility
+	•	Reviews and approves intelligence before use
+	•	Ensures safety, compliance, and correctness
+
+Key Activities
+	•	Side-by-side comparison (old vs new)
+	•	Risk checks (PII, bias, speculation)
+	•	Approve / reject / request changes
+	•	Certify templates for production
+
+⸻
+
+5. End User (Consumer)
+
+Responsibility
+	•	Consumes explanations only
+
+Capabilities
+	•	Uses AI Elaborator, Simplifier, Summarizer
+	•	Can override tone (within Admin-allowed options)
+	•	Cannot change logic or limits
+
+⸻
+
+Wireframe & UI Summary (What Each Role Sees)
+
+Super Admin UI
+	•	Platform dashboard (health, usage, violations)
+	•	Model registry
+	•	Global policy management
+	•	Audit & lineage logs
+	•	Emergency controls
+
+⸻
+
+Admin UI (Key Screen)
+
+Feature Configuration Screen
+	•	Tabs: AI Elaborator | AI Simplifier | AI Summarizer
+	•	Sub-feature panels (e.g. Elaborate with Example)
+	•	Controls:
+	•	Template selection
+	•	Tone enablement
+	•	Token limits
+	•	KB selection
+	•	User & role management
+	•	Usage & limits view
+
+⸻
+
+Maker UI
+
+Prompt Template Studio
+	•	Template editor (instructions, constraints)
+	•	Test playground
+	•	Sample inputs
+	•	Risk indicators
+	•	Submit for review button
+
+⸻
+
+Checker UI
+
+Governance Review Console
+	•	Pending reviews list
+	•	Side-by-side comparison
+	•	Risk checklist
+	•	Commenting panel
+	•	Approve / Reject actions
+
+⸻
+
+End User UI
+
+Minimal Consumption Screen
+	•	Input question or text
+	•	Select feature (Elaborator / Simplifier / Summarizer)
+	•	Optional tone override
+	•	View explanation with disclaimer
+	•	Feedback option
