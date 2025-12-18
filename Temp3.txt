@@ -1,0 +1,616 @@
+AI Elaborator – Admin Configuration (Detailed)
+
+AI Elaborator has three sub-features, each configurable independently.
+
+⸻
+
+3.1 Sub-feature A: Elaboration with Example
+
+Purpose
+
+Explain content with illustrative examples, possibly domain-specific.
+
+Admin-Configurable Controls
+
+Configuration Panel
+	•	Custom Prompt Template (domain-specific allowed)
+	•	Allowed Elaborator Tones:
+	•	Basic
+	•	Technical
+	•	Executive
+	•	(Admin can enable/disable tones per project)
+	•	Maximum Token Limit
+	•	e.g. 300 / 500 / 800 tokens
+	•	Default Tone for Project
+	•	Example Inclusion Rule:
+	•	Mandatory
+	•	Optional
+	•	Disabled
+
+3.2 Sub-feature B: Elaborate Term
+
+Purpose
+
+Explain specific terms or phrases concisely.
+
+Admin-Configurable Controls
+
+Configuration Panel
+	•	Custom Prompt Template (term-focused)
+	•	Allowed Tones
+	•	Maximum Token Limit (lower ceiling than full elaboration)
+	•	e.g. max 150 tokens
+	•	Context Usage:
+	•	Term only
+	•	Term + surrounding sentence
+	•	Output Format:
+	•	Definition
+	•	Definition + short explanation
+
+
+3.3 Sub-feature C: Factual Elaborator (KB-backed)
+
+Purpose
+
+Generate fact-based elaboration grounded in enterprise knowledge.
+
+Admin-Configurable Controls
+
+Configuration Panel
+	•	Knowledge Base Selection
+	•	KB name
+	•	Index / collection
+	•	Retrieval Parameters
+	•	Top-K documents
+	•	Custom Prompt Template (fact-only)
+	•	Allowed Tones
+	•	Maximum Token Limit
+	•	Citation Requirement:
+	 •	Mandatory
+	 •	Optional
+
+Hard Constraints
+	•	No speculative language
+	•	No content outside KB
+
+
+AI Simplifier – Admin Configuration (Forward-Compatible)
+
+(Exact sub-features can vary, but Admin scope remains consistent.)
+
+Typical Sub-features
+	•	Text Simplification
+	•	Sentence Simplification
+	•	Jargon Removal
+
+Admin Controls
+	•	Allowed Simplification Levels:
+	•	Mild
+	•	Moderate
+	•	Aggressive
+	•	Preserve Terms List (domain-critical terms)
+	•	Maximum Output Length
+	•	Readability Target (optional)
+	•	Default Simplification Level
+
+AI Summarizer – Admin Configuration (Forward-Compatible)
+
+Typical Sub-features
+	•	Short Summary
+	•	Detailed Summary
+	•	Action-Oriented Summary
+
+Admin Controls
+	•	Allowed Summary Types
+	•	Maximum Summary Length
+	•	Output Format:
+	•	Bullets
+	•	Paragraph
+	•	Focus Controls:
+	•	Facts only
+	•	Risks only
+	•	Actions only
+	•	Default Summary Type
+
+⸻
+
+6. What Admin UI Explicitly Does NOT Show
+
+Admin UI should not include:
+	•	Prompt engineering playground
+	•	Draft vs approved versions
+	•	Prompt diffs
+	•	Approval workflows
+
+Those belong to Maker / Checker or system-level governance.
+
+Updated Admin Responsibility Summary (One Screen)
+Admin Responsibilities:
+✔ Configure sub-feature behavior
+✔ Set tones and limits
+✔ Select KB sources (where applicable)
+✔ Define project defaults
+✔ Monitor usage & limits
+
+Admin Cannot:
+✘ Enable/disable core features
+✘ Edit explanation logic
+✘ Approve changes
+✘ Override global policy
+
+
+What is the need of custom prompt setup
+
+
+Correct Modular Design (Recommended)
+
+1. Separate “Prompt Templates” as a Platform Asset
+
+Create a dedicated system-level entity:
+
+Prompt Template Registry
+
+This is not owned by Admin.
+
+Owned by:
+	•	Maker (create)
+	•	Checker (approve)
+	•	Super Admin (govern)
+
+
+3. What Admin Should Configure Instead (Correct)
+
+Admin should select and parameterize, not create prompts.
+
+Correct Admin Controls per Sub-feature
+
+For “Elaboration with Example”
+Admin UI should show:
+	•	Prompt Template Selector (dropdown)
+	•	ELAB_GENERAL_V1
+	•	ELAB_BANKING_V2
+	•	Allowed Tones
+	•	Max Tokens
+	•	Default Tone
+	•	Example ON/OFF (if template supports it)
+
+Admin does NOT edit prompt text.
+
+What Your Final Modular Design Looks Like for prompts
+
+Prompt Template Registry (Global)
+        ↑
+Maker creates → Checker approves
+        ↓
+Admin selects template + sets limits
+        ↓
+Feature execution uses template
+
+1. Maker – Responsibilities (Revised & Final)
+
+Core Purpose
+
+Maker designs the intelligence of the platform, not project behavior.
+
+Maker works at the platform capability level, not at the project level.
+
+⸻
+
+What the Maker DOES
+
+1. Prompt Template Engineering
+	•	Create global prompt templates for:
+	•	AI Elaborator
+	•	AI Simplifier
+	•	AI Summarizer
+	•	Design prompts to be:
+	•	Domain-aware
+	•	Tone-compatible
+	•	Policy-compliant
+	•	Reusable across projects
+
+Example
+
+Template ID: ELAB_WITH_EXAMPLE_BANKING_V2
+Supports:
+- Tones: Basic, Technical, Executive
+- Example: Mandatory
+- Max Tokens: Parameterized
+
+2. Prompt Parameter Design
+	•	Define parameters exposed to Admin:
+	•	Tone
+	•	Max token limit
+	•	Example inclusion
+	•	Define safe defaults
+	•	Define upper/lower bounds
+
+⸻
+
+3. Feature & Sub-feature Intelligence Design
+	•	Define how each sub-feature behaves
+	•	Elaborate with Example
+	•	Elaborate Term
+	•	Factual Elaborator (KB-grounded)
+	•	Ensure:
+	•	No hallucination paths
+	•	No speculative language
+	•	Proper grounding rules
+
+⸻
+
+4. Guardrail Alignment
+	•	Embed safety constraints into prompts
+	•	Align with:
+	•	Redaction rules
+	•	Compliance policies
+	•	Domain restrictions
+
+⸻
+
+5. Testing & Validation
+	•	Test templates against:
+	•	Edge cases
+	•	Ambiguous inputs
+	•	Domain-sensitive scenarios
+	•	Provide expected output samples for Checker review
+
+⸻
+
+6. Submission for Approval
+	•	Submit prompt templates and logic for review
+	•	Provide:
+	•	Change summary
+	•	Impact scope
+	•	Rollback notes
+
+⸻
+
+What the Maker CANNOT Do
+	•	Approve templates
+	•	Deploy directly to production
+	•	Override Admin limits
+	•	Configure project-specific behavior
+
+⸻
+
+2. Checker – Responsibilities (Revised & Final)
+
+Core Purpose
+
+Checker certifies trust, safety, and correctness of intelligence before use.
+
+Checker ensures nothing unsafe or non-compliant becomes usable.
+
+⸻
+
+What the Checker DOES
+
+1. Prompt Template Review & Approval
+	•	Review Maker-created templates for:
+	•	Clarity
+	•	Compliance
+	•	Bias
+	•	Hallucination risk
+	•	Validate:
+	•	Tone correctness
+	•	Parameter exposure
+	•	Domain appropriateness
+
+⸻
+
+2. Compliance & Risk Validation
+	•	Ensure prompts:
+	•	Do not leak sensitive data
+	•	Do not fabricate facts
+	•	Stay within regulatory boundaries
+	•	Validate Factual Elaborator:
+	•	Uses KB-only sources
+	•	Enforces citation requirements
+
+⸻
+
+3. Impact & Reuse Assessment
+	•	Assess:
+	•	Cross-project impact
+	•	Backward compatibility
+	•	Risk of misuse by Admin or End Users
+
+⸻
+
+4. Approval Lifecycle Management
+	•	Approve, reject, or request changes
+	•	Enforce mandatory comments on rejection
+	•	Set approval scope:
+	•	Pilot only
+	•	Production-ready
+	•	Restricted use
+
+⸻
+
+5. Audit Certification
+	•	Certify templates as:
+	•	“Approved for Use”
+	•	“Restricted”
+	•	“Deprecated”
+	•	Ensure audit trace exists for:
+	•	Who approved
+	•	Why
+	•	When
+
+⸻
+
+What the Checker CANNOT Do
+	•	Edit prompt content
+	•	Create templates
+	•	Change Admin configurations
+	•	Bypass global policies
+
+
+4. End-to-End Flow (Reconfirmed)
+
+Maker creates template
+        ↓
+Checker reviews & approves
+        ↓
+Template becomes selectable
+        ↓
+Admin selects template + sets limits
+        ↓
+End users consume feature
+
+
+Use Case Context (Common)
+
+Domain: Banking
+Project: Loan Risk System
+Consumers: Internal credit officers + customer support app
+
+⸻
+
+1. AI ELABORATOR – Feature-Level Use Cases
+
+⸻
+
+1.1 Sub-feature: Elaboration with Example
+
+Business Use Case
+
+A credit officer wants to understand why a loan was rejected, with a simple example.
+
+⸻
+
+Role Actions
+
+Maker
+	•	Creates prompt template:
+
+ELAB_WITH_EXAMPLE_BANKING_V1
+- Explains decision in business language
+- Includes a simple example
+- Supports tones: Basic, Executive
+
+•	Submits for approval.
+
+Checker
+	•	Reviews explanation for:
+	•	No model score leakage
+	•	No speculative advice
+	•	Approves template for production.
+
+Admin
+	•	Selects approved template for project
+	•	Configures:
+	•	Allowed tones: Basic, Executive
+	•	Default tone: Basic
+	•	Max tokens: 400
+
+End User / Application
+	•	Inputs: “Loan application rejected”
+	•	Output:
+“The loan was rejected because the income history is short and existing debts are high.
+For example, if a customer earns ₹30,000 but already has multiple EMIs, repayment becomes risky.”
+
+1.2 Sub-feature: Elaborate Term
+
+Business Use Case
+
+Customer support wants to explain a single financial term to a customer.
+
+⸻
+
+Role Actions
+
+Maker
+	•	Creates prompt template:
+
+ELAB_TERM_BANKING_V1
+- Short definition
+- Optional context sentence
+
+•	Defines max token parameter.
+
+Checker
+	•	Ensures:
+	•	Definitions are neutral
+	•	No advisory tone
+	•	Approves template.
+
+Admin
+	•	Configures:
+	•	Max tokens: 120
+	•	Tone: Basic only
+	•	Context: Term + surrounding sentence
+
+End User / Application
+	•	Input term: “Debt-to-Income Ratio”
+	•	Output:
+“Debt-to-Income Ratio means how much of your income goes toward paying debts.”
+
+⸻
+
+1.3 Sub-feature: Factual Elaborator (KB-backed)
+
+Business Use Case
+
+Regulatory or policy-driven explanations that must be factual.
+
+⸻
+
+Role Actions
+
+Maker
+	•	Creates prompt template:
+
+FACTUAL_ELAB_V1
+- Answer only using KB content
+- Mandatory citation
+- No assumptions
+
+Checker
+	•	Verifies:
+	•	KB-only grounding
+	•	Citation enforcement
+	•	Approves with “Restricted Use” tag.
+
+Admin
+	•	Selects:
+	•	Knowledge Base: Credit Policy KB
+	•	Index: RBI_Lending_2023
+	•	Max tokens: 300
+
+End User / Application
+	•	Input: “Why is income history required?”
+	•	Output:
+“Income history is required to assess repayment capacity.
+Source: RBI Lending Guidelines 2023, Section 4.2”
+
+2. AI SIMPLIFIER – Feature-Level Use Cases
+
+⸻
+
+2.1 Sub-feature: Text Simplification
+
+Business Use Case
+
+Legal text must be shown in simple language to customers.
+
+⸻
+
+Role Actions
+
+Maker
+	•	Defines simplification logic:
+	•	Preserve legal terms
+	•	Replace jargon
+	•	Creates reusable simplification template.
+
+Checker
+	•	Ensures:
+	•	Meaning preserved
+	•	No legal dilution
+	•	Approves.
+
+Admin
+	•	Configures:
+	•	Simplification level: Moderate
+	•	Preserve terms: “EMI”, “Interest Rate”
+
+End User / Application
+	•	Input:
+“The applicant exhibits a suboptimal debt profile.”
+	•	Output:
+“The applicant has a high level of debt.”
+
+⸻
+
+2.2 Sub-feature: Sentence Simplification (Optional)
+
+Business Use Case
+
+Break long technical sentences into shorter readable ones.
+
+⸻
+
+Role Actions
+
+Maker
+	•	Designs sentence-splitting rules.
+
+Checker
+	•	Confirms no meaning loss.
+
+Admin
+	•	Enables sentence simplification
+	•	Sets max sentence length.
+
+End User
+	•	Receives simplified, shorter sentences.
+
+⸻
+
+3. AI SUMMARIZER – Feature-Level Use Cases
+
+⸻
+
+3.1 Sub-feature: Short Summary
+
+Business Use Case
+
+Senior management wants a quick overview of a report.
+
+⸻
+
+Role Actions
+
+Maker
+	•	Creates summary template:
+	•	Key points only
+	•	No interpretation
+
+Checker
+	•	Ensures no bias or omission of critical facts.
+
+Admin
+	•	Configures:
+	•	Max length: 150 words
+	•	Format: Bullets
+
+End User / Application
+	•	Input: 10-page report
+	•	Output:
+	•	• Loan defaults increased by 8%
+	•	• High risk in unsecured loans
+
+⸻
+
+3.2 Sub-feature: Action-Oriented Summary
+
+Business Use Case
+
+Operations team wants next steps from a document.
+
+⸻
+
+Role Actions
+
+Maker
+	•	Defines “action extraction” logic.
+
+Checker
+	•	Confirms actions are derived, not invented.
+
+Admin
+	•	Enables action summary
+	•	Sets tone: Executive
+
+End User
+	•	Output:
+	•	• Review unsecured loan policies
+	•	• Increase credit checks
+
+5. One-Line Role Behavior per Use Case
+	•	Maker: “How should this feature think?”
+	•	Checker: “Is this safe and correct?”
+	•	Admin: “How much and in what way can it be used?”
+	•	User: “Explain this to me.”
