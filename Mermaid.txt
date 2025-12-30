@@ -1,0 +1,54 @@
+graph TD
+    %% Styling
+    classDef input fill:#f9f9f9,stroke:#333,stroke-width:2px;
+    classDef process fill:#e1f5fe,stroke:#0277bd,stroke-width:2px;
+    classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
+    classDef module fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,stroke-dasharray: 5 5;
+    classDef output fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
+
+    %% Phase 1: Ingestion & Preprocessing
+    subgraph Ingestion ["Phase 1: Ingestion & Preprocessing"]
+        Step1(1. PDF Upload):::input --> Step2
+        Step2[2. Text Extraction<br/><i>Config: Include/Exclude Header & Footer</i>]:::process --> Step3
+        Step3[3. Preprocessing & Cleaning]:::process --> Step4
+        Step4[4. Sentence Splitting]:::process
+    end
+
+    %% Phase 2: NER Pipeline
+    subgraph NER_Pipe ["Phase 2: Entity Resolution Module"]
+        Step4 --> Step5
+        Step5[5. NER Hybrid Module]:::module
+        
+        subgraph Hybrid_NER ["Hybrid Approach"]
+            direction TB
+            RuleBased[Rule-Based Extraction]
+            Transformer[Transformer-Based<br/>GLiNER]
+        end
+        
+        Step5 --- Hybrid_NER
+        Hybrid_NER --> Step6[6. Deduplication & Normalization<br/><i>Create Canonical Map</i>]:::process
+        Step6 --> Step7[7. Acronym Resolution<br/><i>Rule-based Acronym Map</i>]:::process
+        Step7 --> Step8[8. Alias/Synonym Resolution<br/><i>Suffix Stripping & Fuzzy Matching</i>]:::process
+        Step8 --> Step9[9. Final Entity Set Generation<br/><i>Variant to Canonical Mapping</i>]:::output
+    end
+
+    %% Phase 3: Coreference Pipeline
+    subgraph Coref_Pipe ["Phase 3: Coreference Resolution Module"]
+        Step4 --> Step10
+        Step10[10. Coreference Resolution<br/><i>Transformer-Based fastcoref</i>]:::module
+        Step10 --> Step11[11. Normalize Clusters<br/><i>Mentions & Span Indices</i>]:::process
+        Step11 --> Step12[12. Filter Clusters<br/><i>Based on NER Matches</i>]:::process
+    end
+
+    %% Dependencies
+    Step9 -.-> Step12
+    Step9 --> Step13
+    Step12 --> Step13
+
+    %% Phase 4: Chunking Engine
+    subgraph Chunking ["Phase 4: Synthesis & Chunking"]
+        Step13[13. Mapping & Resolution<br/><i>Map Mentions to Sentence IDs</i>]:::process
+        Step13 --> Step14[14. Entity-Driven Chunking Engine<br/><i>Build Chunks from Clusters & Entities</i>]:::module
+        Step14 --> Step15[15. Miscellaneous Chunking<br/><i>Handle Unmapped Sentences</i>]:::process
+        Step15 --> Step16(16. Final Entity-Driven Chunks):::output
+    end
