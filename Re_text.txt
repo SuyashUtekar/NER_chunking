@@ -1,0 +1,41 @@
+I am creating a Resource service using fastapi for only 3 types of documents- pdfs, words, texts
+
+There are 3 tables -
+
+1) is_doc table - 
+id (will be used as a foreign key in is_job table), name (document name), file size, type_id (foreign key from is_type_master table which is id in is_type_master table), extension, mime_type, file_var_id (minio path where the document is actually being saved), is_vernacular (0 or 1), vernacular_language (english or other), is_deleted (0 and 1, for soft delete purpose), created_by, created_at, updated_by (will be null for now), updated_at (same as created_at)
+
+
+2) is_type_master table - 
+id (which will used as foreign key in is_doc table), name (pdf, doc, text), created_by, created_at, updated_by (will be null for now), updated_at (same as created_at)
+
+3) is_job table-
+job_id, doc_id (foreign key from is_doc table), status_id (1: submitted, 2: Completed, 3: Failed), created_by, created_on)
+
+This is_type_master table will be created and filled by me for 3 file_types mentioned above
+
+And id (of is_type_master table) will have 3 unique values - 1: pdf, 2: word, 3: text)
+
+For now create these tables in sql_lite and make it in such a way that sql the database can be changed (OracleDB, postgreSQL etc)
+
+This service will have 4 endpoints 
+
+1) upload doc (pdf/word/txt)
+
+Input - file upload, is_vernacular (1 or 0)
+
+Output- id, name, status (which will be from job tracker utils - 1: submitted, 2: Completed, 3: Failed)
+Description- upload the file and fill other input and the display the desired output in json, and fill the entry in the is_doc table and store the document in the minio and get its minio path (to fill file_var_id in is_doc table)
+Use job tracker utils to create job and store is value in the is_job table.
+
+2) list_resources (pagenated) - execute to show 20 or X values per page from the is_doc table
+
+3) search/filter_resource - 
+
+Input - name (from is_doc table)
+Output - every field from is_doc table for a particular name
+
+4) delete -
+
+Input - file_id
+Output - from is_doc table is_deleted field will become 1 (for soft delete) and can also delete from the minio (for hard delete)
